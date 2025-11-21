@@ -10,13 +10,13 @@
 'use client';
 
 import React from 'react';
+import { usePushNotification } from '../../hooks/usePushNotification';
 
-// 임시 사용자 및 장치 정보
 const USER_INFO = {
   name: "캡스톤 앱 사용자",
-  email: "capstone@ajou.ac.kr",
+  email: "capstone@ajbnu.ac.kr",
   deviceStatus: "연결됨",
-  deviceId: "SENSOR-UDON-001A", // 캡스톤 장치 고유 ID
+  deviceId: "SENSOR-UDON-001A", 
   lastSync: "2025년 11월 21일 19:30",
 };
 
@@ -28,7 +28,6 @@ interface SettingItemProps {
   color?: string;
 }
 
-// 개별 설정 항목 컴포넌트
 const SettingItem: React.FC<SettingItemProps> = ({ title, value, onClick, isButton = false, color = 'text-gray-900' }) => (
   <div 
     className={`flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 cursor-pointer transition duration-150 ${onClick ? 'hover:bg-gray-50' : ''}`}
@@ -45,11 +44,13 @@ const SettingItem: React.FC<SettingItemProps> = ({ title, value, onClick, isButt
 );
 
 export default function MyPageScreen() {
+  // 푸시 알림 훅 사용
+  const { requestPermission, permission, fcmToken } = usePushNotification();
+
   const handleLogout = () => {
     if (window.confirm("정말 로그아웃 하시겠습니까?")) {
-      // 🚨 실제 로그아웃 API 호출 및 상태 변경 로직
       console.log("로그아웃 처리됨");
-      // 예: window.location.href = '/login';
+      window.location.href = '/login';
     }
   };
 
@@ -59,7 +60,7 @@ export default function MyPageScreen() {
         ⚙️ 마이페이지 및 설정
       </h1>
 
-      {/* 1. 사용자 계정 섹션 */}
+      {/* 1. 계정 정보 섹션 */}
       <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">계정 정보</h2>
         <SettingItem title="이름" value={USER_INFO.name} />
@@ -72,36 +73,33 @@ export default function MyPageScreen() {
         />
       </div>
 
-      {/* 2. 장치 관리 섹션 (가장 중요) */}
+      {/* 2. 장치 관리 섹션 */}
       <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">장치 연결 상태</h2>
-        
-        {/* 장치 고유 ID 표시 */}
         <SettingItem title="장치 ID" value={USER_INFO.deviceId} />
-        
-        {/* 연결 상태 표시 */}
-        <SettingItem 
-          title="현재 연결 상태" 
-          value={USER_INFO.deviceStatus} 
-          color={USER_INFO.deviceStatus === '연결됨' ? 'text-green-600' : 'text-red-600'} 
-        />
-        
-        {/* 마지막 동기화 시간 */}
-        <SettingItem title="최근 데이터 동기화" value={USER_INFO.lastSync} />
-
-        {/* 장치 재연결 버튼 */}
-        <SettingItem 
-          title="장치 수동 재연결" 
-          isButton={true} 
-          value="재연결" 
-          onClick={() => alert("장치 재연결 로직 실행")} 
-        />
+        <SettingItem title="현재 연결 상태" value={USER_INFO.deviceStatus} color="text-green-600" />
       </div>
 
       {/* 3. 앱 설정 및 기타 */}
       <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">앱 설정</h2>
-        <SettingItem title="알림 설정" isButton={true} value="ON" onClick={() => alert("알림 설정 토글")} />
+        
+        {/* 클릭 시 requestPermission 함수 실행 */}
+        <SettingItem 
+          title="알림 설정 (권한 요청)" 
+          isButton={true} 
+          value={permission === 'granted' ? "ON (허용됨)" : "OFF (설정하기)"} 
+          color={permission === 'granted' ? "text-blue-600" : "text-gray-500"}
+          onClick={requestPermission} 
+        />
+        
+        {/* 토큰이 발급되면 화면에 표시 (테스트용) */}
+        {fcmToken && (
+            <div className="mt-2 p-2 bg-gray-100 rounded text-xs break-all text-gray-500 font-mono border border-gray-200">
+                <span className="font-bold">FCM Token:</span> {fcmToken}
+            </div>
+        )}
+
         <SettingItem title="버전 정보" value="1.0.0 (Beta)" />
         <SettingItem 
           title="로그아웃" 

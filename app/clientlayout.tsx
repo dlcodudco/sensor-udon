@@ -1,4 +1,4 @@
-"use client";
+/*"use client";
 
 import { usePathname } from "next/navigation";
 import BottomNav from "../components/bottomnav/bottomnav";
@@ -23,4 +23,43 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     //  {!shouldHideNav && <BottomNav />}
     //</>
   );
+}*/
+
+'use client';
+
+import { usePathname } from "next/navigation";
+import BottomNav from "../components/bottomnav/bottomnav";
+import { createContext, useState } from "react";
+
+export const HideNavContext = createContext<any>(null);
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [hideNav, setHideNav] = useState(false); // Context를 통한 강제 숨김 상태
+
+  // ----------------------------------------------------
+  // 🔑 최종 해결책: 경로(Path) 기반으로 내비게이션 바 숨김 🔑
+  // ----------------------------------------------------
+  // Nav Bar를 무조건 숨겨야 하는 경로를 명시합니다.
+  const hideNavPaths = [
+    "/onboarding", 
+    "/onboardingscreen", // 혹시 모를 경로 대소문자 문제 대비
+    "/login",
+    "/loginscreen"
+  ];
+
+  // 1. 경로 목록에 포함되면 숨깁니다.
+  const shouldHideByPath = hideNavPaths.some(path => pathname.startsWith(path));
+
+  // 2. (Context를 통한) 컴포넌트 내부 요청이 들어오거나, 경로 기반 숨김 요청이 있으면 숨깁니다.
+  const shouldHideNav = hideNav || shouldHideByPath;
+  // ----------------------------------------------------
+
+  return (
+     <HideNavContext.Provider value={{ hideNav, setHideNav }}>
+      {children}
+      {/* shouldHideNav가 false일 때만 BottomNav 렌더링 */}
+      {!shouldHideNav && <BottomNav />} 
+    </HideNavContext.Provider>
+  );
 }
