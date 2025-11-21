@@ -2,7 +2,8 @@
 
 'use client'; 
 
-import { useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import { HideNavContext } from "../../app/clientlayout";
 
 // ⭐⭐ 1. onboardingSlides 데이터를 컴포넌트 파일 안에 직접 정의 ⭐⭐
 const onboardingSlides = [
@@ -38,6 +39,12 @@ interface OnboardingProps {
 export default function OnboardingScreen({ onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0); 
   const currentSlide = onboardingSlides[currentStep];
+
+  const { setHideNav } = useContext(HideNavContext);
+  useEffect(() => {
+    setHideNav(true);
+    return () => setHideNav(false);
+  }, []);
 
   const handleNext = () => {
     if (currentStep < onboardingSlides.length - 1) {
