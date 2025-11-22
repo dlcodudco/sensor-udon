@@ -57,9 +57,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
      <HideNavContext.Provider value={{ hideNav, setHideNav }}>
-      {children}
-      {/* shouldHideNav가 false일 때만 BottomNav 렌더링 */}
-      {!shouldHideNav && <BottomNav />} 
-    </HideNavContext.Provider>
+    {/* 1. 가장 바깥 div에 상단 노치(Top) 패딩을 줍니다. */}
+    <div className="min-h-screen pt-[env(safe-area-inset-top)]">
+      
+      {/* 2. children(페이지 내용)은 여기에 한 번만! */}
+      {/* pb-24는 하단 네비게이션 높이만큼 내용이 가려지지 않게 띄워주는 역할입니다. */}
+      <main className="pb-24"> 
+        {children}
+      </main>
+
+      {/* 3. 하단 네비게이션 */}
+      {!shouldHideNav && <BottomNav />}
+    </div>
+  </HideNavContext.Provider>
   );
 }
