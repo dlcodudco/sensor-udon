@@ -10,104 +10,139 @@
 'use client';
 
 import { useState } from 'react';
+import { Video, Camera } from 'lucide-react'; // 아이콘 추가
 
 export default function CameraScreen() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   
-  // 🚨 1. 스트리밍 시작/종료 함수 (추후 실제 스트리밍 연결 필요)
+  // 1. 스트리밍 시작/종료 핸들러
   const handleToggleStream = () => {
-    // 실제 백엔드에 스트리밍 시작/종료 요청을 보내는 로직이 여기에 들어갑니다.
     setIsStreaming(!isStreaming);
     if (isStreaming) {
-      setSnapshotUrl(null); // 스트리밍 종료 시 캡처 초기화
+      setSnapshotUrl(null);
     }
   };
 
-  // 🚨 2. 스냅샷(캡처) 함수 (추후 실제 API 연결 필요)
+  // 2. 스냅샷(캡처) 핸들러
   const handleCaptureSnapshot = () => {
-    // 실제 백엔드/장치에 캡처 요청을 보내고, 이미지 URL을 받는 로직이 들어갑니다.
-    
-    // ⭐ 현재는 임시 이미지 URL을 사용합니다.
+    // 임시 더미 이미지 (실제 구현 시 API 연결 필요)
     const tempUrl = `https://placehold.co/600x400/3c3c3c/d9d9d9?text=Captured+Snapshot\n@${new Date().toLocaleTimeString()}`;
     setSnapshotUrl(tempUrl);
   };
 
   return (
-    <div className="p-4 space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">
-        🎥 실시간 내부 영상 모니터링
-      </h1>
+    // 전체 컨테이너: 화면 꽉 채움 + 스크롤 방지
+    <div className="flex flex-col h-[100dvh] bg-gray-50 overflow-hidden">
+      
+      {/* [상단 헤더] 고정 영역 */}
+      <header className="
+        flex-none h-16 bg-white z-10 
+        flex items-center justify-between px-6
+        border-b border-gray-100 shadow-sm
+        pt-[env(safe-area-inset-top)]
+      ">
+        <h1 className="text-xl font-bold text-gray-900">🎥실시간 모니터링</h1>
+        <div className="flex gap-4 text-gray-500">
+           {/* 헤더 우측 아이콘 (장식용) */}
+          <Video size={20} className={isStreaming ? "text-red-500 animate-pulse" : ""} />
+        </div>
+      </header>
 
-      {/* 1. 영상 스트리밍 영역 */}
-      <div className="bg-gray-900 aspect-video w-full rounded-xl shadow-2xl overflow-hidden relative">
-        {!isStreaming && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-90 text-white">
-            <svg className="w-12 h-12 text-red-500 mb-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-            </svg>
-            <p className="text-lg font-medium">스트리밍이 중지되었습니다.</p>
-            <p className="text-sm text-gray-400">시작 버튼을 눌러 영상을 확인하세요.</p>
-          </div>
-        )}
-        
-        {isStreaming && (
-            // ⭐ 실제 영상 스트리밍은 <img> 태그나 <video> 태그를 사용하여
-            // M-JPEG 또는 WebRTC 스트림 주소를 여기에 연결해야 합니다.
-            // <img src="[스트리밍 주소]" alt="실시간 영상" className="w-full h-full object-cover" />
-            <div className="w-full h-full flex items-center justify-center bg-black">
-                <div className="text-white text-center">
-                    <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse inline-block mr-2"></div>
-                    <p className="text-xl font-mono">LIVE STREAMING...</p>
-                    <p className="text-sm text-gray-400 mt-1">실제 영상 스트림이 여기에 표시됩니다.</p>
+      {/* [본문 콘텐츠] 스크롤 가능한 영역 */}
+      <main className="
+        flex-1 overflow-y-auto 
+        p-6 pb-[calc(80px+env(safe-area-inset-bottom))] 
+        overscroll-y-contain
+      ">
+        <div className="space-y-6">
+          
+          {/* 1. 영상 스트리밍 영역 (가로세로 비율 유지) */}
+          <div className="bg-gray-900 aspect-video w-full rounded-2xl shadow-lg overflow-hidden relative border border-gray-800">
+            {!isStreaming && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white p-4 text-center">
+                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-3">
+                    <Video className="w-8 h-8 text-gray-500" />
                 </div>
-            </div>
-        )}
-      </div>
+                <p className="text-lg font-medium">스트리밍 대기 중</p>
+                <p className="text-sm text-gray-400 mt-1">아래 시작 버튼을 눌러주세요</p>
+              </div>
+            )}
+            
+            {isStreaming && (
+                <div className="w-full h-full flex items-center justify-center bg-black relative">
+                    {/* 라이브 표시 배지 */}
+                    <div className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1 z-10">
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        LIVE
+                    </div>
 
-      {/* 2. 스트림 제어 버튼 */}
-      <button
-        onClick={handleToggleStream}
-        className={`w-full py-3 font-semibold rounded-lg shadow-md transition duration-300 ${
-          isStreaming 
-            ? 'bg-red-600 hover:bg-red-700 text-white' 
-            : 'bg-green-600 hover:bg-green-700 text-white'
-        }`}
-      >
-        {isStreaming ? '🛑 스트리밍 종료' : '▶️ 스트리밍 시작'}
-      </button>
-
-      {/* 3. 스냅샷(캡처) 버튼 및 영역 */}
-      <div className="pt-4 border-t border-gray-200 space-y-4">
-        <button
-          onClick={handleCaptureSnapshot}
-          disabled={!isStreaming} // 스트리밍 중일 때만 활성화
-          className={`w-full py-3 font-semibold rounded-lg transition duration-300 ${
-            isStreaming
-              ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          📸 현재 화면 캡처 (스냅샷)
-        </button>
-
-        {/* 캡처된 이미지 미리보기 */}
-        {snapshotUrl && (
-          <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-            <h2 className="text-lg font-semibold mb-3 text-gray-800">최근 캡처 이미지</h2>
-            <img 
-              src={snapshotUrl} 
-              alt="캡처된 이미지" 
-              className="w-full h-auto rounded-lg shadow-md"
-              onError={(e) => {
-                e.currentTarget.onerror = null; 
-                e.currentTarget.src="https://placehold.co/600x400/f87171/ffffff?text=Image+Load+Failed";
-              }}
-            />
-            <p className="text-sm text-gray-500 mt-2 text-right">캡처 시간: {new Date().toLocaleTimeString()}</p>
+                    <div className="text-center text-gray-400">
+                        <p className="text-xl font-mono text-white mb-2">📡 STREAMING...</p>
+                        <p className="text-xs">실제 영상이 여기에 표시됩니다</p>
+                    </div>
+                </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* 2. 스트림 제어 버튼 */}
+          <button
+            onClick={handleToggleStream}
+            className={`w-full py-4 font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
+              isStreaming 
+                ? 'bg-white text-red-600 border-2 border-red-100 hover:bg-red-50' 
+                : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700'
+            }`}
+          >
+            {isStreaming ? (
+                <>🛑 스트리밍 종료</>
+            ) : (
+                <>▶️ 스트리밍 시작</>
+            )}
+          </button>
+
+          {/* 3. 스냅샷(캡처) 버튼 및 영역 */}
+          <div className="pt-2 border-t border-gray-200 space-y-4">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <Camera size={20} />
+                스냅샷
+            </h2>
+            
+            <button
+              onClick={handleCaptureSnapshot}
+              disabled={!isStreaming} 
+              className={`w-full py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
+                isStreaming
+                  ? 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95 shadow-md'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              📸 화면 캡처
+            </button>
+
+            {/* 캡처된 이미지 미리보기 카드 */}
+            {snapshotUrl && (
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 animate-fade-in-up">
+                <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-semibold text-gray-800">최근 캡처</span>
+                    <span className="text-xs text-gray-400">{new Date().toLocaleTimeString()}</span>
+                </div>
+                <div className="rounded-xl overflow-hidden border border-gray-100">
+                    <img 
+                    src={snapshotUrl} 
+                    alt="캡처된 이미지" 
+                    className="w-full h-auto object-cover"
+                    />
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* 하단 여백 (스크롤 편의성) */}
+          <div className="h-4"></div>
+
+        </div>
+      </main>
     </div>
   );
 }

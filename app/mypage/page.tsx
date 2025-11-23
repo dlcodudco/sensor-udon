@@ -11,105 +11,187 @@
 
 import React from 'react';
 import { usePushNotification } from '../../hooks/usePushNotification';
+import { 
+  Settings, User, Smartphone, LogOut, ChevronRight, 
+  Bell, Shield, Mail, Lock 
+} from 'lucide-react'; // 아이콘 추가
 
+// 사용자 정보 (Mock Data)
 const USER_INFO = {
   name: "캡스톤 앱 사용자",
-  email: "capstone@ajbnu.ac.kr",
+  email: "safe_food@jbnu.ac.kr",
   deviceStatus: "연결됨",
-  deviceId: "SENSOR-UDON-001A", 
-  lastSync: "2025년 11월 21일 19:30",
+  deviceId: "SAFE-FOOD-001A", 
+  lastSync: "2025.11.21 19:30",
 };
 
+// 설정 아이템 컴포넌트 (업그레이드 버전)
 interface SettingItemProps {
+  icon?: React.ReactNode;
   title: string;
   value?: string;
   onClick?: () => void;
-  isButton?: boolean;
-  color?: string;
+  isDestructive?: boolean; // 로그아웃 등 위험한 작업용 색상
+  showArrow?: boolean;
 }
 
-const SettingItem: React.FC<SettingItemProps> = ({ title, value, onClick, isButton = false, color = 'text-gray-900' }) => (
+const SettingItem: React.FC<SettingItemProps> = ({ 
+  icon, title, value, onClick, isDestructive = false, showArrow = false 
+}) => (
   <div 
-    className={`flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 cursor-pointer transition duration-150 ${onClick ? 'hover:bg-gray-50' : ''}`}
     onClick={onClick}
+    className={`
+      flex items-center justify-between p-4 
+      border-b border-gray-50 last:border-b-0 
+      transition-colors duration-200
+      ${onClick ? 'cursor-pointer hover:bg-gray-50 active:bg-gray-100' : ''}
+    `}
   >
-    <span className={`text-base font-medium ${color}`}>{title}</span>
-    {value && <span className="text-gray-600 text-sm">{value}</span>}
-    {isButton && (
-        <span className={`text-sm font-semibold ${color}`}>
-            {value} &gt;
-        </span>
-    )}
+    <div className="flex items-center gap-3">
+      {/* 아이콘 영역 */}
+      {icon && (
+        <div className={`p-2 rounded-full ${isDestructive ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
+          {icon}
+        </div>
+      )}
+      <span className={`text-[15px] font-medium ${isDestructive ? 'text-red-600' : 'text-gray-700'}`}>
+        {title}
+      </span>
+    </div>
+
+    <div className="flex items-center gap-2">
+      {value && <span className="text-sm text-gray-500 font-medium">{value}</span>}
+      {showArrow && <ChevronRight size={16} className="text-gray-300" />}
+    </div>
   </div>
 );
 
 export default function MyPageScreen() {
-  // 푸시 알림 훅 사용
   const { requestPermission, permission, fcmToken } = usePushNotification();
 
   const handleLogout = () => {
     if (window.confirm("정말 로그아웃 하시겠습니까?")) {
       console.log("로그아웃 처리됨");
+      // Next.js 라우터 사용을 권장하지만, 확실한 새로고침을 위해 location.href 유지
       window.location.href = '/login';
     }
   };
 
   return (
-    <div className="p-4 space-y-8 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">
-        ⚙️ 마이페이지 및 설정
-      </h1>
-
-      {/* 1. 계정 정보 섹션 */}
-      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">계정 정보</h2>
-        <SettingItem title="이름" value={USER_INFO.name} />
-        <SettingItem title="이메일" value={USER_INFO.email} />
-        <SettingItem 
-          title="비밀번호 변경" 
-          isButton={true} 
-          value="변경" 
-          onClick={() => alert("비밀번호 변경 페이지로 이동")} 
-        />
-      </div>
-
-      {/* 2. 장치 관리 섹션 */}
-      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">장치 연결 상태</h2>
-        <SettingItem title="장치 ID" value={USER_INFO.deviceId} />
-        <SettingItem title="현재 연결 상태" value={USER_INFO.deviceStatus} color="text-green-600" />
-      </div>
-
-      {/* 3. 앱 설정 및 기타 */}
-      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">앱 설정</h2>
-        
-        {/* 클릭 시 requestPermission 함수 실행 */}
-        <SettingItem 
-          title="알림 설정 (권한 요청)" 
-          isButton={true} 
-          value={permission === 'granted' ? "ON (허용됨)" : "OFF (설정하기)"} 
-          color={permission === 'granted' ? "text-blue-600" : "text-gray-500"}
-          onClick={requestPermission} 
-        />
-        
-        {/* 토큰이 발급되면 화면에 표시 (테스트용) */}
-        {fcmToken && (
-            <div className="mt-2 p-2 bg-gray-100 rounded text-xs break-all text-gray-500 font-mono border border-gray-200">
-                <span className="font-bold">FCM Token:</span> {fcmToken}
-            </div>
-        )}
-
-        <SettingItem title="버전 정보" value="1.0.0 (Beta)" />
-        <SettingItem 
-          title="로그아웃" 
-          isButton={true} 
-          value="로그아웃" 
-          color="text-red-600" 
-          onClick={handleLogout} 
-        />
-      </div>
+    // 전체 컨테이너: 화면 꽉 채움 + 스크롤 방지
+    <div className="flex flex-col h-[100dvh] bg-gray-50 overflow-hidden">
       
+      {/* [상단 헤더] 고정 영역 */}
+      <header className="
+        flex-none h-16 bg-white z-10 
+        flex items-center justify-between px-6
+        border-b border-gray-100 shadow-sm
+        pt-[env(safe-area-inset-top)]
+      ">
+        <h1 className="text-xl font-bold text-gray-900">⚙️ 내 정보</h1>
+        <div className="flex gap-4 text-gray-500">
+           <button className="hover:text-blue-600 transition p-1">
+             <Settings size={22} />
+           </button>
+        </div>
+      </header>
+
+      {/* [본문 콘텐츠] 스크롤 가능한 영역 */}
+      <main className="
+        flex-1 overflow-y-auto 
+        p-6 pb-[calc(80px+env(safe-area-inset-bottom))] 
+        overscroll-y-contain
+      ">
+        <div className="space-y-6">
+          
+          {/* 1. 프로필 카드 (디자인 변경) */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center text-3xl">
+              👤
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">{USER_INFO.name}</h2>
+              <p className="text-sm text-gray-500">{USER_INFO.email}</p>
+              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1 inline-block font-medium">
+                Standard Plan
+              </span>
+            </div>
+          </div>
+
+          {/* 2. 장치 관리 섹션 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 pt-4 pb-2">
+              Device Management
+            </h3>
+            <SettingItem 
+              icon={<Smartphone size={18} />} 
+              title="연결된 장치" 
+              value={USER_INFO.deviceId} 
+            />
+            <SettingItem 
+              icon={<Shield size={18} />} 
+              title="장치 상태" 
+              value={USER_INFO.deviceStatus} 
+            />
+          </div>
+
+          {/* 3. 앱 설정 섹션 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 pt-4 pb-2">
+              App Settings
+            </h3>
+            
+            {/* 알림 설정 */}
+            <SettingItem 
+              icon={<Bell size={18} />} 
+              title="푸시 알림" 
+              value={permission === 'granted' ? "ON" : "OFF"} 
+              onClick={requestPermission}
+              showArrow
+            />
+            
+            {/* 비밀번호 변경 */}
+            <SettingItem 
+              icon={<Lock size={18} />} 
+              title="비밀번호 변경" 
+              onClick={() => alert("비밀번호 변경 기능 준비 중")}
+              showArrow
+            />
+
+             {/* 버전 정보 */}
+             <SettingItem 
+              icon={<Settings size={18} />} 
+              title="버전 정보" 
+              value="1.0.0 (Beta)" 
+            />
+          </div>
+
+          {/* FCM 토큰 표시 (개발용) */}
+          {fcmToken && (
+            <div className="bg-gray-100 p-3 rounded-xl border border-gray-200">
+               <p className="text-xs text-gray-500 font-mono break-all">
+                 <span className="font-bold select-none">Token: </span>
+                 {fcmToken}
+               </p>
+            </div>
+          )}
+
+          {/* 4. 로그아웃 버튼 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-4">
+            <SettingItem 
+              icon={<LogOut size={18} />} 
+              title="로그아웃" 
+              isDestructive 
+              onClick={handleLogout}
+            />
+          </div>
+          
+          <p className="text-center text-xs text-gray-400 py-4">
+            © 2025 Safe Food Project. All rights reserved.
+          </p>
+
+        </div>
+      </main>
     </div>
   );
 }
