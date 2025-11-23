@@ -120,7 +120,7 @@ export default function RootPage() {
 
     // 3. 로그인 여부 확인 (임시: false)
     //const isLoggedIn = false;
-    // localStorage에 'isLoggedIn'이라는 값이 있는지 확인
+    // localStorage에 'isLoggedIn'이라는 값이 있는지 확인합니다.
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
     // 4. 상태에 따라 페이지 이동
@@ -139,5 +139,5 @@ export default function RootPage() {
   }
 
   // 스플래시가 끝나고 페이지 이동이 일어나는 아주 짧은 찰나 (아무것도 안 보여줌)
-  return null;
+  return <div className="min-h-screen bg-white" />;
 }
