@@ -11,72 +11,83 @@ export default function BottomNav() {
   );
 }*/
 
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Thermometer, Camera, FileText, User } from 'lucide-react';
 
 export default function BottomNav() {
-  const pathname = usePathname(); // 현재 주소를 가져오는 훅
+  const pathname = usePathname();
 
-  // 메뉴 리스트 (링크와 이모티콘 설정)
   const navItems = [
-    { name: "센서", href: "/sensor", icon: "🌡️" }, // 센서 페이지 경로 확인 필요
-    { name: "카메라", href: "/camera", icon: "📷" }, // 카메라 페이지 경로 확인 필요
-    { name: "기록", href: "/history", icon: "📝" }, // 기록 페이지
-    { name: "마이", href: "/mypage", icon: "🏠" },
+    { name: '센서', href: '/sensor', icon: Thermometer },
+    { name: '카메라', href: '/camera', icon: Camera },
+    { name: '기록', href: '/history', icon: FileText },
+    { name: '마이', href: '/mypage', icon: User },
   ];
 
+  // 🎨 [색상 설정] 여기를 바꾸면 포인트 색이 바뀝니다!
+  // 추천 1: text-gray-900 / bg-gray-900 (시크한 블랙 - 현재 설정)
+  // 추천 2: text-emerald-600 / bg-emerald-600 (안전한 느낌의 초록)
+  // 추천 3: text-orange-500 / bg-orange-500 (식욕을 돋우는 주황)
+  
+  const activeColorClass = "text-gray-900"; // 아이콘/글자 색
+  const activeBgClass = "bg-gray-900";     // 상단 인디케이터 바 색
+
   return (
-    <nav
-      className="
-        fixed bottom-0 w-full z-50
-        border-t border-gray-200
-        
-        /* 🎨 디자인 추천 1: 반투명 블러 효과 (아이폰 느낌) */
-        bg-white/90 backdrop-blur-md
-        
-        /* 📏 높이 조정: 하단 안전 영역(pb-[env...]) + 넉넉한 상단 패딩 */
-        pb-[env(safe-area-inset-bottom)]
-        pt-3 
-      "
-    >
-      {/* 높이를 h-16에서 h-20으로 늘려서 터치 영역 확보 */}
-      <div className="flex justify-around items-start h-20">
+    <nav className="
+      fixed bottom-0 w-full z-50
+      bg-white border-t border-gray-100
+      pb-[env(safe-area-inset-bottom)] 
+      shadow-[0_-5px_20px_rgba(0,0,0,0.02)]
+    ">
+      <div className="flex justify-around items-center h-16">
         {navItems.map((item) => {
-          // 현재 페이지인지 확인 (정확히 일치하거나 하위 경로일 경우)
           const isActive = pathname === item.href;
+          const Icon = item.icon;
 
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`
-                flex flex-col items-center justify-center w-full h-full
-                transition-colors duration-200 ease-in-out
-                /* 터치했을 때 약간 눌리는 느낌 추가 */
-                active:scale-95
-                /* 위쪽으로 공간을 확보하여 하단 바와 거리 두기 */
-                -mt-1
+                relative flex flex-col items-center justify-center w-full h-full
+                transition-all duration-300
+                active:bg-gray-50 /* 터치 시 아주 연한 회색 배경 */
               `}
             >
-              {/* 아이콘 (이모티콘) */}
-              <span className={`text-2xl mb-1 ${isActive ? "scale-110" : "opacity-70"}`}>
-                {item.icon}
-              </span>
+              {/* ✨ 상단 인디케이터 (선택되면 위에 뜨는 막대) */}
+              {isActive && (
+                <span className={`
+                  absolute top-0 w-12 h-1 rounded-b-full 
+                  ${activeBgClass} 
+                  shadow-sm animate-fade-in
+                `} />
+              )}
 
-              {/* 텍스트 라벨 */}
-              <span
-                className={`
-                  text-xs font-medium
-                  ${isActive 
-                    ? "text-black-600 font-bold" // 🌟 활성 상태: 진하고 파란색
-                    : "text-gray-400 font-normal" // 비활성 상태: 연한 회색
-                  }
-                `}
-              >
-                {item.name}
-              </span>
+              {/* 아이콘 + 텍스트 그룹 */}
+              <div className={`
+                flex flex-col items-center gap-1 transition-all duration-300
+                ${isActive ? '-translate-y-0.5' : 'translate-y-0'}
+              `}>
+                <Icon 
+                  size={24} 
+                  className={`
+                    transition-colors duration-300 
+                    ${isActive ? activeColorClass : 'text-gray-400'}
+                  `} 
+                  // 선택됐을 때 아이콘 선을 조금 더 굵게(2.5) 처리
+                  strokeWidth={isActive ? 2.5 : 2} 
+                />
+                
+                <span className={`
+                  text-[10px] font-bold transition-colors duration-300
+                  ${isActive ? activeColorClass : 'text-gray-400'}
+                `}>
+                  {item.name}
+                </span>
+              </div>
             </Link>
           );
         })}
