@@ -40,27 +40,43 @@ export default function LoginScreen() {
 
       {/* 로그인 폼 */}
       <form onSubmit={handleLogin} className="w-full space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">아이디</label>
-          <input 
-            type="text" 
-            placeholder="User ID"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all bg-gray-50"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">아이디</label>
+            <input 
+              type="text" 
+              placeholder="User ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="
+                w-full h-12 px-4 rounded-xl 
+                border border-gray-200 bg-gray-50
+                focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
+                outline-none transition-all 
+                
+                /* 👇 변경된 부분: 글자는 진하게(900), 안내 문구는 연하게(400) */
+                text-gray-900 placeholder:text-gray-400
+              "
+            />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
-          <input 
-            type="password" 
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full h-12 px-4 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all bg-gray-50"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+            <input 
+              type="password" 
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="
+                w-full h-12 px-4 rounded-xl 
+                border border-gray-200 bg-gray-50
+                focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
+                outline-none transition-all 
+                
+                /* 👇 변경된 부분: 글자는 진하게(900), 안내 문구는 연하게(400) */
+                text-gray-900 placeholder:text-gray-400
+              "
+            />
+          </div>
 
         {/* 로그인 버튼 (온보딩 버튼 스타일 통일) */}
         <button 
