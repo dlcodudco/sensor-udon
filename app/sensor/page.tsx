@@ -189,7 +189,8 @@ export default function SensorScreen() {
         flex-none h-16 bg-white z-10 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        pt-[env(safe-area-inset-top)]
+        pt-[calc(env(safe-area-inset-top)+16px)]
+        pb-4
       ">
         <h1 className="text-xl font-bold text-gray-900">📦실시간 모니터링</h1>
         <div className="flex gap-4 text-gray-500">
