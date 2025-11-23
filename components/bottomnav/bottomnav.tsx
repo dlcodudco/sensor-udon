@@ -20,6 +20,15 @@ import { Thermometer, Camera, FileText, User } from 'lucide-react';
 export default function BottomNav() {
   const pathname = usePathname();
 
+  // 🚨 1. 네비게이션 바를 숨길 경로들을 여기에 적어줍니다.
+  // 루트('/'), 로그인('/login'), 온보딩('/onboarding')에서는 절대 보이지 않게 합니다.
+  const hiddenPaths = ['/', '/login', '/onboarding'];
+
+  // 🚨 2. 현재 경로가 숨길 목록에 포함되어 있으면, 아무것도 그리지 않고 끝냅니다. (return null)
+  if (hiddenPaths.includes(pathname)) {
+    return null;
+  }
+
   const navItems = [
     { name: '센서', href: '/sensor', icon: Thermometer },
     { name: '카메라', href: '/camera', icon: Camera },
