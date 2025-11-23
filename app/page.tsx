@@ -92,41 +92,50 @@ export default function Home() {
 } */
 
 
-'use client'; 
+'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import SplashScreen from '../components/SplashScreen'; //  아까 만든 파일 경로 (위치에 맞게 수정 필요)
 
 export default function RootPage() {
   const router = useRouter();
+  const [showSplash, setShowSplash] = useState(true); // 스플래시 화면 보임 여부
 
   useEffect(() => {
-    // 앱이 시작되자마자 실행되는 로직
-    const checkUserStatus = () => {
-      // 1. 온보딩 완료 여부 확인
-      const isOnboardingCompleted = false; 
+    // 1. 앱 실행 후 2.5초 동안 대기 (스플래시 화면 보여주기)
+    const timer = setTimeout(() => {
+      setShowSplash(false); // 스플래시 끄기
+      checkUserStatus();    // 상태 검사 및 이동 시작
+    }, 2500);
 
-      // 2. 로그인 여부 확인 (임시: 로그인 안 된 상태로 가정)
-      const isLoggedIn = false; 
-
-      // 3. 상태에 따라 페이지 이동 (리디렉션)
-      if (!isOnboardingCompleted) {
-        router.replace('/onboarding'); // 온보딩 안 했으면 온보딩으로
-      } else if (!isLoggedIn) {
-        router.replace('/login');      // 로그인 안 했으면 로그인 페이지로 이동
-      } else {
-        router.replace('/sensor');     // 로그인 했으면 센서 대시보드로
-      }
-    };
-
-    checkUserStatus();
+    return () => clearTimeout(timer); // 메모리 누수 방지
   }, [router]);
 
-  // 리디렉션 되는 짧은 순간 보여줄 로딩 화면
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-4 text-gray-500 font-medium">앱을 시작하는 중...</p>
-    </div>
-  );
+  const checkUserStatus = () => {
+    // 2. 온보딩 완료 여부 확인
+    // 💡 중요: 아까 OnboardingScreen에서 'localStorage'에 저장했던 값을 여기서 읽어야 합니다.
+    // 값이 없으면 false, 있으면 true로 처리
+    const isOnboardingCompleted = localStorage.getItem('onboardingComplete') === 'true';
+
+    // 3. 로그인 여부 확인 (임시: false)
+    const isLoggedIn = false;
+
+    // 4. 상태에 따라 페이지 이동
+    if (!isOnboardingCompleted) {
+      router.replace('/onboarding'); // 온보딩 안 했으면 온보딩으로
+    } else if (!isLoggedIn) {
+      router.replace('/login');      // 온보딩은 했는데 로그인은 안 했으면 로그인으로
+    } else {
+      router.replace('/sensor');     // 둘 다 했으면 메인(센서)으로
+    }
+  };
+
+  // 5. showSplash가 true일 때는 스플래시 화면만 렌더링 (다른 건 안 보임)
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
+  // 스플래시가 끝나고 페이지 이동이 일어나는 아주 짧은 찰나 (아무것도 안 보여줌)
+  return null;
 }
