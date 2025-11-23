@@ -50,7 +50,8 @@ export default function HistoryScreen() {
         flex-none h-16 bg-white z-10 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        pt-[env(safe-area-inset-top)]
+        pt-[calc(env(safe-area-inset-top)+16px)]
+        pb-4
       ">
         <h1 className="text-xl font-bold text-gray-900">📜배송 이벤트 기록</h1>
         <div className="flex gap-4 text-gray-500">
