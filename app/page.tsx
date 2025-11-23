@@ -133,11 +133,5 @@ export default function RootPage() {
     }
   };
 
-  // 5. showSplash가 true일 때는 스플래시 화면만 렌더링 (다른 건 안 보임)
-  if (showSplash) {
-    return <SplashScreen />;
-  }
-
-  // 스플래시가 끝나고 페이지 이동이 일어나는 아주 짧은 찰나 (아무것도 안 보여줌)
-  return <div className="min-h-screen bg-white" />;
+  return <SplashScreen />;
 }
