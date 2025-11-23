@@ -38,7 +38,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [hideNav, setHideNav] = useState(false); // Context를 통한 강제 숨김 상태
 
   // ----------------------------------------------------
-  // 🔑 최종 해결책: 경로(Path) 기반으로 내비게이션 바 숨김 🔑
+  // 최종 해결책: 경로(Path) 기반으로 내비게이션 바 숨김
   // ----------------------------------------------------
   // Nav Bar를 무조건 숨겨야 하는 경로를 명시합니다.
   const hideNavPaths = [
@@ -51,17 +51,17 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   // 1. 경로 목록에 포함되면 숨깁니다.
   const shouldHideByPath = hideNavPaths.some(path => pathname.startsWith(path));
 
-  // 2. (Context를 통한) 컴포넌트 내부 요청이 들어오거나, 경로 기반 숨김 요청이 있으면 숨깁니다.
+  // 2. (Context를 통한) 컴포넌트 내부 요청이 들어오거나, 경로 기반 숨김 요청이 있으면 숨김
   const shouldHideNav = hideNav || shouldHideByPath;
   // ----------------------------------------------------
 
   return (
      <HideNavContext.Provider value={{ hideNav, setHideNav }}>
-    {/* 1. 가장 바깥 div에 상단 노치(Top) 패딩을 줍니다. */}
+    {/* 1. 가장 바깥 div에 상단 노치(Top) 패딩. */}
     <div className="min-h-screen pt-[env(safe-area-inset-top)]">
       
-      {/* 2. children(페이지 내용)은 여기에 한 번만! */}
-      {/* pb-24는 하단 네비게이션 높이만큼 내용이 가려지지 않게 띄워주는 역할입니다. */}
+      {/* 2. children(페이지 내용)은 여기에 한 번만 */}
+      {/* pb-24는 하단 네비게이션 높이만큼 내용이 가려지지 않게 띄워주는 역할 */}
       <main className="pb-24"> 
         {children}
       </main>
