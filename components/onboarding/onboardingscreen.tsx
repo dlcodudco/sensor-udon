@@ -55,7 +55,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingProps) {
   };
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 w-full h-[100dvh] overflow-hidden bg-white flex flex-col overscroll-none touch-none">
       
       {/* 배경 효과 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
