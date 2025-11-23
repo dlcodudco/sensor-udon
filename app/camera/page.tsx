@@ -32,29 +32,32 @@ export default function CameraScreen() {
   };
 
   return (
-    // 전체 컨테이너: 화면 꽉 채움 + 스크롤 방지
-    <div className="flex flex-col h-[100dvh] bg-gray-50 overflow-hidden">
+    // 🔴 1. 최상위 컨테이너: fixed inset-0으로 화면 고정 (스크롤 튕김 방지)
+    <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
-      {/* [상단 헤더] 고정 영역 */}
+      {/* 🔴 2. 헤더: 노치 영역만큼 패딩 추가 + 높이 유동적 설정 */}
       <header className="
-        flex-none h-16 bg-white z-10 
+        flex-none bg-white z-30 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        pt-[calc(env(safe-area-inset-top)+16px)]
+        
+        /* 👇 핵심: 노치 높이(env) + 16px 여유 공간 확보 */
+        pt-[calc(env(safe-area-inset-top)+16px)] 
         pb-4
       ">
-        <h1 className="text-xl font-bold text-gray-900">🎥실시간 모니터링</h1>
+        <h1 className="text-xl font-bold text-gray-900">🎥 실시간 모니터링</h1>
         <div className="flex gap-4 text-gray-500">
            {/* 헤더 우측 아이콘 (장식용) */}
           <Video size={20} className={isStreaming ? "text-red-500 animate-pulse" : ""} />
         </div>
       </header>
 
-      {/* [본문 콘텐츠] 스크롤 가능한 영역 */}
+      {/* 🔴 3. 본문: 여기만 스크롤 가능 */}
       <main className="
         flex-1 overflow-y-auto 
-        p-6 pb-[calc(80px+env(safe-area-inset-bottom))] 
+        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] /* 하단바 가림 방지 여유 공간 넉넉히 */
         overscroll-y-contain
+        -webkit-overflow-scrolling-touch /* 아이폰 스크롤 부드럽게 */
       ">
         <div className="space-y-6">
           
