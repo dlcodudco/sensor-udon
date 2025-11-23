@@ -101,162 +101,162 @@ export default function SensorScreen() {
 
 
 import { useState, useEffect } from 'react';
-import SensorDataCard from '../../components/sensor/sensordatacard'; // 파일명 수정 적용
-import DeviceStatus from '../../components/sensor/devicestatus';     // 파일명 수정 적용
-import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api'; // API import
+import { RotateCw, Bell } from 'lucide-react'; // 아이콘 추가 (없으면 npm install lucide-react)
+import SensorDataCard from '../../components/sensor/sensordatacard';
+import DeviceStatus from '../../components/sensor/devicestatus';
+import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
 
-// 로컬에서 UI에 사용할 데이터 구조 정의 (백엔드 데이터 가공용)
+// 데이터 타입 정의
 interface DisplaySensorData {
-  tiltX: number; 
-  tiltY: number; 
-  temperature: number; 
+  tiltX: number;
+  tiltY: number;
+  temperature: number;
   humidity: number;
-  vibration: '정상' | '감지됨'; // 이 값은 백엔드에서 진동 데이터가 들어오면 변경해야 함
-  battery: number; 
+  vibration: '정상' | '감지됨';
+  battery: number;
 }
-
 
 export default function SensorScreen() {
   const [liveData, setLiveData] = useState<LiveSensorDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 10초마다 데이터를 새로고침하는 로직
+  // 데이터 로딩 함수 (수동 새로고침을 위해 밖으로 뺌)
+  const loadData = async () => {
+    try {
+      // 최초 로딩이 아닐 때만 로딩 표시 (부드러운 UX)
+      if (liveData === null) setIsLoading(true); 
+
+      const data = await fetchLiveSensorData();
+      setLiveData(data);
+      setError(null);
+    } catch (err) {
+      console.error("센서 데이터 로딩 실패:", err);
+      setError("데이터를 불러오는 데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 10초마다 자동 새로고침
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // 최초 로딩이 아니라면 로딩 상태를 보여줄 필요는 없음 (부드러운 업데이트를 위해)
-        if (liveData === null) setIsLoading(true); 
-
-        const data = await fetchLiveSensorData();
-        setLiveData(data);
-        setError(null);
-      } catch (err) {
-        console.error("센서 데이터 로딩 실패:", err);
-        setError("데이터를 불러오는 데 실패했습니다. (API 확인 필요)");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData(); // 컴포넌트 마운트 시 최초 실행
-
-    // 10초마다 데이터 새로고침 (실시간 모니터링)
-    const intervalId = setInterval(loadData, 10000); 
-
-    return () => clearInterval(intervalId); // 컴포넌트 언마운트 시 인터벌 정리
+    loadData(); 
+    const intervalId = setInterval(loadData, 10000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // -----------------------------------------------------------
-  // 🔑 1차 방어: 오류, 로딩 중, 데이터 null 시 즉시 화면 반환
+  // 1. 로딩 & 에러 화면도 "전체 화면 중앙 정렬"로 유지
   // -----------------------------------------------------------
   if (error) {
     return (
-      <div className="p-4 flex flex-col justify-center items-center min-h-screen bg-gray-50 text-center">
-        <p className="text-xl text-red-600 font-bold">🚨 API 연결 오류 🚨</p>
+      <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 text-center z-50">
+        <p className="text-xl text-red-600 font-bold">🚨 API 연결 오류</p>
         <p className="text-gray-700 mt-2">{error}</p>
-        <p className="text-sm text-gray-500 mt-4">백엔드 서버(Render) 상태 및 URL 경로가 올바른지 확인해주세요.</p>
+        <button onClick={loadData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">다시 시도</button>
       </div>
     );
   }
   
   if (isLoading || liveData === null) {
     return (
-      <div className="p-4 flex flex-col justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-lg text-gray-500">
-          실시간 센서 데이터를 불러오는 중...
-        </p>
+      <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 z-50">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-500 font-medium">센서 데이터 연결 중...</p>
       </div>
     );
   }
 
-
-
-  // --- 데이터 가공 로직 ---
-  // 백엔드에서 받은 데이터를 UI에 맞게 변환
+  // 데이터 가공
   const processedData: DisplaySensorData = {
-    // 백엔드에서 tilt는 단일 값으로 오므로, 임의로 X, Y축으로 나눕니다.
-    // (만약 백엔드에서 X, Y축을 따로 보낸다면 이 로직을 수정해야 합니다.)
     tiltX: liveData?.tilt !== null ? parseFloat(liveData.tilt.toFixed(1)) : 0.0,
-    tiltY: 0.0, // 임시값: 현재 백엔드는 하나의 tilt만 제공합니다.
-    
+    tiltY: 0.0,
     temperature: liveData?.temperature !== null ? parseFloat(liveData.temperature.toFixed(1)) : 0.0,
     humidity: liveData?.humidity !== null ? parseFloat(liveData.humidity.toFixed(1)) : 0.0,
-    
-    // 진동/배터리 데이터는 현재 백엔드에서 제공되지 않으므로 임시값을 사용합니다.
-    vibration: '정상', 
-    battery: 85, 
+    vibration: '정상',
+    battery: 85,
   };
-  // -------------------------
 
-
-/*  if (error) {
-    return <div className="p-4 text-red-600">오류: {error}</div>;
-  }
-  
-  if (isLoading || liveData === null) {
-    return (
-      <div className="p-4 flex flex-col justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-lg text-gray-500">
-          실시간 센서 데이터를 불러오는 중...
-        </p>
-      </div>
-    );
-  } */
-
-  // 데이터 로딩 완료 후 렌더링
+  // -----------------------------------------------------------
+  // 2. 메인 렌더링 (고정 헤더 + 스크롤 본문 적용)
+  // -----------------------------------------------------------
   return (
-    <div className="p-4 space-y-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-800">
-        📦 실시간 장치 모니터링
-      </h1>
+    // 전체 컨테이너: 화면 꽉 채움 + 스크롤 방지
+    <div className="flex flex-col h-[100dvh] bg-gray-50 overflow-hidden">
       
-      {/* 1. 장치 상태 요약 (상단 - 배터리/연결은 임시값) */}
-      <DeviceStatus 
-        battery={processedData.battery} 
-        connectionStatus="연결됨" 
-      />
+      {/* [상단 헤더] 고정 영역 */}
+      <header className="
+        flex-none h-16 bg-white z-10 
+        flex items-center justify-between px-6
+        border-b border-gray-100 shadow-sm
+        pt-[env(safe-area-inset-top)]
+      ">
+        <h1 className="text-xl font-bold text-gray-900">📦실시간 모니터링</h1>
+        <div className="flex gap-4 text-gray-500">
+          {/* 새로고침 버튼에 기능 연결 */}
+          <button onClick={loadData} className="hover:text-blue-600 transition p-1">
+            <RotateCw size={20} />
+          </button>
+          <button className="hover:text-blue-600 transition p-1">
+            <Bell size={20} />
+          </button>
+        </div>
+      </header>
 
-      {/* 2. 핵심 센서 데이터 그리드 */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* 기울기 (tilt 값을 X축으로 사용하고, 임계값을 5도로 가정) */}
-        <SensorDataCard 
-          title="기울기" 
-          value={`${processedData.tiltX}°`} 
-          status={Math.abs(processedData.tiltX) > 5 ? '경고' : '정상'}
-          unit="도"
-        />
-        {/* 온도 */}
-        <SensorDataCard 
-          title="온도" 
-          value={`${processedData.temperature}`} 
-          status={processedData.temperature > 30 ? '경고' : '정상'}
-          unit="°C"
-        />
-        {/* 습도 (새로 추가) */}
-        <SensorDataCard 
-          title="습도" 
-          value={`${processedData.humidity}`} 
-          status={processedData.humidity > 60 ? '경고' : '정상'}
-          unit="%RH"
-        />
-        {/* 진동 (임시값) */}
-        <SensorDataCard 
-          title="진동" 
-          value={processedData.vibration} 
-          status={processedData.vibration === '감지됨' ? '경고' : '정상'}
-          unit=""
-        />
-      </div>
+      {/* [본문 콘텐츠] 스크롤 가능한 영역 */}
+      <main className="
+        flex-1 overflow-y-auto 
+        p-6 pb-[calc(80px+env(safe-area-inset-bottom))] 
+        overscroll-y-contain
+      ">
+        <div className="space-y-6">
+          
+          {/* 1. 장치 상태 요약 */}
+          <DeviceStatus 
+            battery={processedData.battery} 
+            connectionStatus="연결됨" 
+          />
 
-      {/* 3. 기타 위젯 영역 (그래프 등) */}
-      <div className="bg-white p-4 rounded-xl shadow-lg">
-        <h2 className="text-lg font-semibold mb-2">최근 센서 변화 기록 (추후 구현)</h2>
-        <p className="text-gray-500 text-sm">여기에 온도 및 기울기 변화 그래프가 표시될 예정입니다.</p>
-      </div>
-      
+          {/* 2. 핵심 센서 데이터 그리드 */}
+          <div className="grid grid-cols-2 gap-4">
+            <SensorDataCard 
+              title="기울기" 
+              value={`${processedData.tiltX}°`} 
+              status={Math.abs(processedData.tiltX) > 5 ? '경고' : '정상'}
+              unit="도"
+            />
+            <SensorDataCard 
+              title="온도" 
+              value={`${processedData.temperature}`} 
+              status={processedData.temperature > 30 ? '경고' : '정상'}
+              unit="°C"
+            />
+            <SensorDataCard 
+              title="습도" 
+              value={`${processedData.humidity}`} 
+              status={processedData.humidity > 60 ? '경고' : '정상'}
+              unit="%RH"
+            />
+            <SensorDataCard 
+              title="진동" 
+              value={processedData.vibration} 
+              status={processedData.vibration === '감지됨' ? '경고' : '정상'}
+              unit=""
+            />
+          </div>
+
+          {/* 3. 기타 위젯 영역 (그래프 등) */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-800 mb-2">최근 기록</h2>
+            <div className="h-32 flex items-center justify-center bg-gray-50 rounded-xl text-gray-400 text-sm">
+              그래프 데이터 준비 중...
+            </div>
+          </div>
+
+          {/* 스크롤 테스트를 위한 여백 (필요 없으면 삭제 가능) */}
+          <div className="h-10"></div>
+        </div>
+      </main>
     </div>
   );
 }
