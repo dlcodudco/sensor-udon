@@ -19,8 +19,23 @@ export default function LoginScreen() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // 로그인 로직 처리 후 메인으로 이동
-    router.push('/sensor');
+    
+    // 1. 아이디와 비밀번호 검사 (하드코딩)
+    if (email === "SafeFood01" && password === "safefood0101") {
+      
+      // 2. 로그인 성공 시: '로그인 되었다'는 표시를 저장함
+      localStorage.setItem("isLoggedIn", "true");
+      
+      // 3. 페이지 이동 (센서 페이지로)
+      router.replace('/sensor'); 
+      
+    } else {
+      // 4. 로그인 실패 시: 경고창 띄우기
+      alert("아이디 또는 비밀번호가 올바르지 않습니다.\n다시 확인해주세요.");
+      
+      // (선택사항) 비밀번호 입력창 초기화
+      setPassword(""); 
+    }
   };
 
   return (

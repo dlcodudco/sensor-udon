@@ -119,7 +119,9 @@ export default function RootPage() {
     const isOnboardingCompleted = localStorage.getItem('onboardingComplete') === 'true';
 
     // 3. 로그인 여부 확인 (임시: false)
-    const isLoggedIn = false;
+    //const isLoggedIn = false;
+    // localStorage에 'isLoggedIn'이라는 값이 있는지 확인
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
 
     // 4. 상태에 따라 페이지 이동
     if (!isOnboardingCompleted) {
