@@ -23,7 +23,7 @@ export default function DeviceStatus({ battery, connectionStatus }: DeviceStatus
       {/* 1. 연결 상태 */}
       <div className="flex items-center space-x-2">
         <span className={`h-3 w-3 rounded-full ${connectionStatus === '연결됨' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-        <p className="text-sm font-semibold">장치 연결 상태:</p>
+        <p className="text-sm text-gray-400 font-semibold">장치 연결 상태:</p>
         <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
           {connectionStatus}
         </span>
