@@ -9,111 +9,130 @@
 
 'use client';
 
-import { useState } from 'react';
-import { FileText, BarChart2 } from 'lucide-react'; // 아이콘 추가
+import { useState, useEffect } from 'react';
+import { FileText, Camera, AlertTriangle, Package, Clock } from 'lucide-react'; 
 import HistoryEventCard from '../../components/history/historyeventcard';
-import HistoryGraph from '../../components/history/historygraph';
 
 // DB에서 가져올 이벤트 기록 데이터 구조
-interface HistoryEvent {
+export interface HistoryEvent {
   id: number;
   timestamp: string;
-  eventType: '충격' | '기울기' | '온도' | '수동캡처';
-  eventValue: number;
+  eventType: '충격' | '기울기' | '수동캡처' | '배송시작' | '배송완료';
+  eventValue: number; 
   message: string;
   isAlert: boolean;
-  imageUrl?: string;
+  imageUrl?: string; 
 }
 
-// ⭐ 임시 데이터 (Mock Data)
-const MOCK_HISTORY_DATA: HistoryEvent[] = [
-  { id: 5, timestamp: '2025-11-21T15:00:00Z', eventType: '충격', eventValue: 120, message: '경고: 심한 충격이 감지되었습니다!', isAlert: true, imageUrl: 'https://placehold.co/600x400/800080/ffffff?text=Auto+Capture+Impact' },
-  { id: 4, timestamp: '2025-11-21T14:50:00Z', eventType: '온도', eventValue: 35.5, message: '온도 임계값(35°C) 초과 감지.', isAlert: true, imageUrl: undefined },
-  { id: 3, timestamp: '2025-11-21T14:30:00Z', eventType: '수동캡처', eventValue: 0, message: '사용자가 수동 캡처를 기록했습니다.', isAlert: false, imageUrl: 'https://placehold.co/600x400/2a9d8f/ffffff?text=User+Capture' },
-  { id: 2, timestamp: '2025-11-21T14:15:00Z', eventType: '기울기', eventValue: 40.1, message: '위험 기울기(40°) 장시간 지속!', isAlert: true, imageUrl: 'https://placehold.co/600x400/e9c46a/ffffff?text=Auto+Capture+Tilt' },
-  { id: 1, timestamp: '2025-11-21T14:00:00Z', eventType: '온도', eventValue: 28.0, message: '배송 시작 및 모니터링 시작.', isAlert: false, imageUrl: undefined },
+// 기본 샘플 데이터 (저장된 게 없을 때 보여줄 것)
+const DEFAULT_MOCK_DATA: HistoryEvent[] = [
+  { id: 1, timestamp: new Date().toISOString(), eventType: '배송시작', eventValue: 0, message: '배송 모니터링 시작', isAlert: false },
 ];
 
 export default function HistoryScreen() {
-  const [history, setHistory] = useState<HistoryEvent[]>(MOCK_HISTORY_DATA);
-  const [isGraphVisible, setIsGraphVisible] = useState(true);
+  const [history, setHistory] = useState<HistoryEvent[]>([]);
 
-  // 🚨 실제 데이터 fetching 로직은 useEffect에서 구현
-  // useEffect(() => { /* fetchHistoryData(); */ }, []);
+  // 화면이 켜질 때 localStorage에서 데이터 불러오기
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('appHistory');
+    
+    if (storedHistory) {
+      setHistory(JSON.parse(storedHistory));
+    } else {
+      setHistory(DEFAULT_MOCK_DATA);
+      localStorage.setItem('appHistory', JSON.stringify(DEFAULT_MOCK_DATA));
+    }
+  }, []);
+
+  // 🚨 [수정된 부분] 여기가 중복되어 있어서 에러가 났었습니다! 하나만 남겼습니다.
+  // 요약 통계 계산
+  const summary = {
+    shock: history.filter(e => e.eventType === '충격').length,
+    tilt: history.filter(e => e.eventType === '기울기').length,
+    manual: history.filter(e => e.eventType === '수동캡처').length,
+  };
 
   return (
-    // 🔴 1. 최상위 컨테이너: fixed inset-0으로 화면 고정 (스크롤 튕김 방지)
+    // 1. 최상위 컨테이너
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
-      {/* 🔴 2. 헤더: 노치 영역만큼 패딩 추가 + 높이 유동적 설정 */}
+      {/* 2. 헤더 */}
       <header className="
         flex-none bg-white z-30 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        
-        /* 👇 핵심: 노치 높이(env) + 16px 여유 공간 확보 */
         pt-[calc(env(safe-area-inset-top)+16px)] 
         pb-4
       ">
-        <h1 className="text-xl font-bold text-gray-900">📜 배송 이벤트 기록</h1>
-        <div className="flex gap-4 text-gray-500">
-           {/* 그래프 토글 버튼을 헤더로 이동 (공간 활용) */}
-           <button 
-             onClick={() => setIsGraphVisible(!isGraphVisible)}
-             className={`transition p-1 rounded-full ${isGraphVisible ? 'text-blue-600 bg-blue-50' : 'hover:text-blue-600'}`}
-           >
-             <BarChart2 size={24} />
-           </button>
-        </div>
+        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Clock size={22} /> 배송 타임라인
+        </h1>
       </header>
 
-      {/* 🔴 3. 본문: 여기만 스크롤 가능 */}
+      {/* 3. 본문 */}
       <main className="
         flex-1 overflow-y-auto 
-        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] /* 하단바 가림 방지 여유 공간 넉넉히 */
+        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] 
         overscroll-y-contain
-        -webkit-overflow-scrolling-touch /* 아이폰 스크롤 부드럽게 */
+        -webkit-overflow-scrolling-touch
       ">
         <div className="space-y-6">
 
-          {/* 1. 센서 데이터 그래프 영역 */}
-          {isGraphVisible && (
-            <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-600 ml-1">
-                    <BarChart2 size={16} />
-                    <span>변화 추이</span>
-                </div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 h-64 flex items-center justify-center">
-                    <HistoryGraph data={history} />
-                </div>
+          {/* 1. 요약 대시보드 */}
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+            <h2 className="text-sm font-bold text-gray-500 mb-4 flex items-center gap-1">
+              <FileText size={16} /> 오늘의 주요 기록
+            </h2>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              {/* 충격 요약 */}
+              <div className="flex flex-col items-center p-3 bg-red-50 rounded-2xl border border-red-100">
+                <AlertTriangle className="text-red-500 mb-1" size={24} />
+                <span className="text-xs text-gray-500 font-medium">충격 감지</span>
+                <span className="text-xl font-extrabold text-red-600">{summary.shock}건</span>
+              </div>
+              {/* 기울기 요약 */}
+              <div className="flex flex-col items-center p-3 bg-orange-50 rounded-2xl border border-orange-100">
+                <Package className="text-orange-500 mb-1" size={24} />
+                <span className="text-xs text-gray-500 font-medium">기울기 알림</span>
+                <span className="text-xl font-extrabold text-orange-600">{summary.tilt}건</span>
+              </div>
+              {/* 수동 캡처 요약 */}
+              <div className="flex flex-col items-center p-3 bg-blue-50 rounded-2xl border border-blue-100">
+                <Camera className="text-blue-500 mb-1" size={24} />
+                <span className="text-xs text-gray-500 font-medium">수동 캡처</span>
+                <span className="text-xl font-extrabold text-blue-600">{summary.manual}건</span>
+              </div>
             </div>
-          )}
+          </div>
 
-          {/* 2. 이벤트 목록 헤더 */}
-          <div className="flex items-center justify-between border-b border-gray-200 pb-2 mt-2">
+          {/* 2. 타임라인 헤더 */}
+          <div className="flex items-center justify-between border-b border-gray-200 pb-2 mt-4">
             <div className="flex items-center gap-2 text-lg font-bold text-gray-800">
-                <FileText size={20} className="text-gray-500" />
-                시간대별 기록
+                <Clock size={20} className="text-gray-500" />
+                상세 타임라인
             </div>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-                Total {history.length}
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full font-medium">
+                총 {history.length}개의 이벤트
             </span>
           </div>
 
-          {/* 3. 이벤트 카드 리스트 */}
-          <div className="space-y-4">
+          {/* 3. 이벤트 리스트 */}
+          <div className="space-y-4 relative">
+            <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200 z-0"></div>
+            
             {history.length > 0 ? (
-                history.map(event => (
-                  <HistoryEventCard key={event.id} event={event} />
+                history.map((event) => (
+                  <div key={event.id} className="relative z-10">
+                    <HistoryEventCard event={event} />
+                  </div>
                 ))
             ) : (
-                <div className="text-center py-10 text-gray-400">
+                <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
                     <p>아직 기록된 이벤트가 없습니다.</p>
                 </div>
             )}
           </div>
 
-          {/* 하단 여백 */}
           <div className="h-4"></div>
         </div>
       </main>
