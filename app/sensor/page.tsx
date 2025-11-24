@@ -99,14 +99,11 @@ export default function SensorScreen() {
 }*/
 
 
-
-import { useState, useEffect } from 'react';
-import { RotateCw, Bell } from 'lucide-react'; // 아이콘 추가 (없으면 npm install lucide-react)
-import SensorDataCard from '../../components/sensor/sensordatacard';
+import { useState, useEffect, useRef } from 'react';
+import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity, Wifi } from 'lucide-react'; 
 import DeviceStatus from '../../components/sensor/devicestatus';
 import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
 
-// 데이터 타입 정의
 interface DisplaySensorData {
   tiltX: number;
   tiltY: number;
@@ -118,146 +115,299 @@ interface DisplaySensorData {
 
 export default function SensorScreen() {
   const [liveData, setLiveData] = useState<LiveSensorDataResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // ⭐ 핵심 1: '첫 로딩'과 '배경 로딩' 구분
+  const [isFirstLoad, setIsFirstLoad] = useState(true); 
   const [error, setError] = useState<string | null>(null);
+  
+  // 데이터 수신 중임을 알리는 상태 (헤더 깜빡임용)
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // 데이터 로딩 함수 (수동 새로고침을 위해 밖으로 뺌)
-  const loadData = async () => {
+  // ⭐ 자동 캡처 중복 방지용 Ref (이미 예약 걸려있는지 체크)
+  const isCaptureScheduled = useRef(false);
+
+  const loadData = async (isBackground = false) => {
     try {
-      // 최초 로딩이 아닐 때만 로딩 표시 (부드러운 UX)
-      if (liveData === null) setIsLoading(true); 
-
+      if (!isBackground) setIsFirstLoad(true);
+      
+      // 데이터 요청 시작 시 잠깐 '수신 중' 표시
+      setIsUpdating(true);
+      
       const data = await fetchLiveSensorData();
       setLiveData(data);
       setError(null);
     } catch (err) {
       console.error("센서 데이터 로딩 실패:", err);
-      setError("데이터를 불러오는 데 실패했습니다.");
+      // 백그라운드 업데이트 중 에러는 사용자에게 큰 방해 안 되게 처리
+      if (!isBackground) setError("데이터를 불러오는 데 실패했습니다.");
     } finally {
-      setIsLoading(false);
+      setIsFirstLoad(false);
+      
+      // 0.3초 뒤에 수신 표시 끔 (깜빡임 효과)
+      setTimeout(() => setIsUpdating(false), 300);
     }
   };
 
-  // 10초마다 자동 새로고침
   useEffect(() => {
-    loadData(); 
-    const intervalId = setInterval(loadData, 10000);
+    // 1. 최초 실행 (로딩 화면 보임)
+    loadData(false); 
+
+    // ⭐ 핵심 2: 1초(1000ms)마다 데이터 갱신 (실시간성 확보)
+    // 기울기와 진동을 위해 주기를 짧게 잡음. 온도/습도도 같이 갱신되지만 문제없음.
+    const intervalId = setInterval(() => {
+      loadData(true); // true = 백그라운드 로딩 (화면 안 가림)
+    }, 1000); 
+
     return () => clearInterval(intervalId);
   }, []);
 
   // -----------------------------------------------------------
-  // 1. 로딩 & 에러 화면 (화면 중앙 고정)
+  // ⭐ 핵심: 기울기 감시 및 1.5초 후 자동 캡처 로직
   // -----------------------------------------------------------
-  if (error) {
+  useEffect(() => {
+    if (!liveData) return;
+
+    const currentTilt = Math.abs(liveData.tilt ?? 0);
+
+    // 1. 기울기가 10도를 넘었고 + 현재 캡처 예약이 안 걸려있다면
+    if (currentTilt > 10 && !isCaptureScheduled.current) {
+      
+      console.log(`⚠️ 위험 기울기 감지(${currentTilt}도)! 1.5초 후 자동 캡처 예약됨...`);
+      isCaptureScheduled.current = true; // 예약 걸림 표시 (중복 방지)
+
+      // 2. 1.5초 타이머 시작
+      setTimeout(() => {
+        handleAutoCapture(currentTilt); // 1.5초 후 캡처 실행
+        
+        // (선택사항) 캡처 후 5초 동안은 다시 캡처 안 되게 쿨타임 주기
+        setTimeout(() => {
+            isCaptureScheduled.current = false; 
+        }, 5000);
+
+      }, 1500); // 1500ms = 1.5초
+    }
+  }, [liveData]); // liveData가 바뀔 때마다 실행됨
+
+  // ⭐ 자동 캡처 실행 함수 (실제로는 백엔드에 저장 요청)
+  const handleAutoCapture = (triggeredTilt: number) => {
+    const timestamp = new Date().toISOString();
+    
+    // 1. 새로운 이벤트 데이터 생성
+    const newEvent = {
+      id: Date.now(), // 현재 시간을 ID로 사용 (고유값)
+      timestamp: timestamp,
+      eventType: '기울기', // 타입 지정
+      eventValue: triggeredTilt,
+      message: `위험 기울기 ${triggeredTilt}° 감지 후 자동 캡처됨.`,
+      isAlert: true,
+      // 실제 카메라 연동 전이라 더미 이미지 사용 (나중에 실제 스냅샷 URL로 교체)
+      imageUrl: `https://placehold.co/600x400/f97316/ffffff?text=Auto+Capture+${triggeredTilt}deg`,
+    };
+
+    // 2. 기존 기록 가져오기 (없으면 빈 배열)
+    const storedHistory = localStorage.getItem('appHistory');
+    const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
+
+    // 3. 새 기록을 맨 앞에 추가
+    const updatedHistory = [newEvent, ...historyArray];
+
+    // 4. 저장소에 다시 저장
+    localStorage.setItem('appHistory', JSON.stringify(updatedHistory));
+
+    // 알림 (테스트용)
+    console.log("📸 자동 캡처 저장 완료:", newEvent);
+  };
+
+  // --- 헬퍼 함수 ---
+  const getTiltStatus = (deg: number) => {
+    const absDeg = Math.abs(deg);
+    if (absDeg > 15) return { color: 'text-red-600', bg: 'bg-red-50', text: '쏟아짐 주의! 🚨', border: 'border-red-500' };
+    if (absDeg > 5) return { color: 'text-orange-500', bg: 'bg-orange-50', text: '약간 기울음', border: 'border-orange-400' };
+    return { color: 'text-green-600', bg: 'bg-green-50', text: '아주 안정적 👍', border: 'border-blue-500' };
+  };
+
+  const getHumidStatus = (val: number) => {
+    if (val > 80) return { text: '눅눅해요 💧', color: 'bg-blue-600' };
+    if (val > 40) return { text: '적당해요 ✨', color: 'bg-cyan-500' };
+    return { text: '건조해요 (바삭) ☀️', color: 'bg-orange-400' };
+  };
+
+  // -----------------------------------------------------------
+  // 에러 화면 (최초 로딩 실패 시에만)
+  // -----------------------------------------------------------
+  if (error && isFirstLoad) {
     return (
       <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 text-center z-50">
-        <p className="text-xl text-red-600 font-bold">🚨 API 연결 오류</p>
-        <p className="text-gray-700 mt-2">{error}</p>
-        <button onClick={loadData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">다시 시도</button>
+        <p className="text-xl text-red-600 font-bold">🚨 연결 오류</p>
+        <button onClick={() => loadData(false)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">재시도</button>
       </div>
     );
   }
   
-  if (isLoading || liveData === null) {
+  // -----------------------------------------------------------
+  // 최초 로딩 화면 (이후 업데이트 때는 안 뜸!)
+  // -----------------------------------------------------------
+  if (isFirstLoad || liveData === null) {
     return (
       <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 z-50">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-500 font-medium">센서 데이터 연결 중...</p>
+        <p className="text-gray-500 font-medium">센서 연결 중...</p>
       </div>
     );
   }
 
-  // 데이터 가공
   const processedData: DisplaySensorData = {
     tiltX: liveData?.tilt !== null ? parseFloat(liveData.tilt.toFixed(1)) : 0.0,
     tiltY: 0.0,
     temperature: liveData?.temperature !== null ? parseFloat(liveData.temperature.toFixed(1)) : 0.0,
     humidity: liveData?.humidity !== null ? parseFloat(liveData.humidity.toFixed(1)) : 0.0,
-    vibration: '정상',
+    vibration: '정상', // 테스트 시 '감지됨'으로 변경해서 확인 가능
     battery: 85,
   };
 
-  // -----------------------------------------------------------
-  // 2. 메인 렌더링 (아이폰 노치 대응 완벽 적용 버전)
-  // -----------------------------------------------------------
+  const tiltInfo = getTiltStatus(processedData.tiltX);
+  const humidInfo = getHumidStatus(processedData.humidity);
+
   return (
-    // 🔴 1. 최상위 컨테이너: fixed inset-0으로 화면 고정 (스크롤 튕김 방지)
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
-      {/* 🔴 2. 헤더: 노치 영역만큼 패딩 추가 (글자 잘림 해결) */}
-      <header className="
-        flex-none bg-white z-30 
-        flex items-center justify-between px-6
-        border-b border-gray-100 shadow-sm
-        
-        /* 👇 핵심: 노치 높이(env) + 16px 여유 공간 확보 */
-        pt-[calc(env(safe-area-inset-top)+16px)] 
-        pb-4
-      ">
-        <h1 className="text-xl font-bold text-gray-900">📦 실시간 모니터링</h1>
+      {/* 헤더 */}
+      <header className="flex-none bg-white z-30 flex items-center justify-between px-6 border-b border-gray-100 shadow-sm pt-[calc(env(safe-area-inset-top)+16px)] pb-4">
+        <div className="flex items-center gap-2">
+           <h1 className="text-xl font-bold text-gray-900">📦 실시간 모니터링</h1>
+           
+           {/* 🔴 LIVE 배지: 빨간 점에만 애니메이션(ping) 다시 적용 */}
+           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 border border-red-100 rounded-md ml-1">
+              {/* 👇 여기가 애니메이션 핵심 부분 */}
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+              </span>
+              <span className="text-[10px] font-extrabold text-red-600 tracking-wider">LIVE</span>
+           </div>
+        </div>
+
         <div className="flex gap-4 text-gray-500">
-          {/* 새로고침 버튼에 기능 연결 */}
-          <button onClick={loadData} className="hover:text-blue-600 transition p-1">
+          {/* 🔄 새로고침 버튼: 여전히 정지 상태 (누를 때만 살짝 반응) */}
+          <button 
+            onClick={() => loadData(true)} 
+            className="hover:text-blue-600 transition p-1 active:rotate-180 duration-300"
+          >
             <RotateCw size={20} />
           </button>
+          
           <button className="hover:text-blue-600 transition p-1">
             <Bell size={20} />
           </button>
         </div>
       </header>
 
-      {/* 🔴 3. 본문: 여기만 스크롤 가능 */}
-      <main className="
-        flex-1 overflow-y-auto 
-        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] /* 하단바 가림 방지 여유 공간 넉넉히 */
-        overscroll-y-contain
-        -webkit-overflow-scrolling-touch /* 아이폰 스크롤 부드럽게 */
-      ">
+      {/* 본문 */}
+      <main className="flex-1 overflow-y-auto p-6 pb-[calc(100px+env(safe-area-inset-bottom))] overscroll-y-contain -webkit-overflow-scrolling-touch">
         <div className="space-y-6">
           
-          {/* 1. 장치 상태 요약 */}
-          <DeviceStatus 
-            battery={processedData.battery} 
-            connectionStatus="연결됨" 
-          />
+          <DeviceStatus battery={processedData.battery} connectionStatus="연결됨" />
 
-          {/* 2. 핵심 센서 데이터 그리드 */}
+          {/* 🌟 1. 기울기 시각화 (실시간 반영) */}
+          <div className={`relative bg-white p-6 rounded-3xl shadow-sm border-2 ${Math.abs(processedData.tiltX) > 15 ? 'border-red-100' : 'border-transparent'} overflow-hidden`}>
+             <div className="flex justify-between items-start mb-6">
+                <div>
+                   <h2 className="text-gray-500 text-sm font-bold flex items-center gap-1"><Package size={16}/> 수평 상태</h2>
+                   <p className={`text-2xl font-bold mt-1 ${tiltInfo.color}`}>{tiltInfo.text}</p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-bold ${tiltInfo.bg} ${tiltInfo.color}`}>
+                   {processedData.tiltX}° 기울음
+                </div>
+             </div>
+
+             <div className="h-40 bg-gray-50 rounded-2xl flex items-center justify-center relative overflow-hidden border border-gray-100">
+                {/* 배경 가이드라인 */}
+                <div className="absolute w-full h-[1px] bg-gray-300/50"></div>
+                <div className="absolute h-full w-[1px] bg-gray-300/50"></div>
+                
+                {/* 📦 움직이는 박스 */}
+                <div 
+                  className={`
+                    w-28 h-28 bg-blue-500 rounded-2xl shadow-xl 
+                    flex items-center justify-center text-white text-4xl 
+                    border-4 border-white/40 backdrop-blur-sm
+                    z-10
+                    /* ⭐ 핵심: 부드러운 움직임을 위한 transition 설정 */
+                    transition-transform duration-700 ease-out
+                  `}
+                  // 회전값이 바로바로 반영됨
+                  style={{ transform: `rotate(${processedData.tiltX}deg)` }} 
+                >
+                  <span className="drop-shadow-md">🍱</span>
+                </div>
+
+                {/* 그림자 효과 (박스 기울기에 따라 움직임) */}
+                <div 
+                    className="absolute bottom-6 w-20 h-2 bg-black/10 rounded-full blur-sm transition-transform duration-700 ease-out"
+                    style={{ transform: `translateX(${processedData.tiltX}px) scale(${1 - Math.abs(processedData.tiltX)/100})` }}
+                />
+             </div>
+             <p className="text-xs text-gray-400 mt-3 text-center">오토바이의 기울기가 실시간으로 반영됩니다.</p>
+          </div>
+
+          {/* 🌟 2. 온도 & 습도 & 진동 */}
           <div className="grid grid-cols-2 gap-4">
-            <SensorDataCard 
-              title="기울기" 
-              value={`${processedData.tiltX}°`} 
-              status={Math.abs(processedData.tiltX) > 5 ? '경고' : '정상'}
-              unit="도"
-            />
-            <SensorDataCard 
-              title="온도" 
-              value={`${processedData.temperature}`} 
-              status={processedData.temperature > 30 ? '경고' : '정상'}
-              unit="°C"
-            />
-            <SensorDataCard 
-              title="습도" 
-              value={`${processedData.humidity}`} 
-              status={processedData.humidity > 60 ? '경고' : '정상'}
-              unit="%RH"
-            />
-            <SensorDataCard 
-              title="진동" 
-              value={processedData.vibration} 
-              status={processedData.vibration === '감지됨' ? '경고' : '정상'}
-              unit=""
-            />
+             
+             {/* 온도 */}
+             <div className="bg-white p-5 rounded-3xl shadow-sm flex flex-col justify-between h-40">
+                <div className="flex justify-between items-start">
+                   <div className="p-2 bg-orange-50 text-orange-500 rounded-full"><Thermometer size={20}/></div>
+                   <span className="text-xs text-gray-400">온도</span>
+                </div>
+                <div>
+                   <p className="text-3xl font-bold text-gray-800">{processedData.temperature}<span className="text-lg text-gray-400 font-normal">°C</span></p>
+                   <p className="text-xs text-gray-500 mt-1">
+                      {processedData.temperature > 50 ? '너무 뜨거워요! 🔥' : '따뜻하게 유지 중 ♨️'}
+                   </p>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                   <div className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-1000" style={{ width: `${Math.min(processedData.temperature, 100)}%` }}></div>
+                </div>
+             </div>
+
+             {/* 습도 */}
+             <div className="bg-white p-5 rounded-3xl shadow-sm flex flex-col justify-between h-40">
+                <div className="flex justify-between items-start">
+                   <div className="p-2 bg-blue-50 text-blue-500 rounded-full"><Droplets size={20}/></div>
+                   <span className="text-xs text-gray-400">습도</span>
+                </div>
+                <div>
+                   <p className="text-3xl font-bold text-gray-800">{processedData.humidity}<span className="text-lg text-gray-400 font-normal">%</span></p>
+                   <p className="text-xs text-gray-500 mt-1">{humidInfo.text}</p>
+                </div>
+                <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                   <div className={`h-full ${humidInfo.color} transition-all duration-1000`} style={{ width: `${Math.min(processedData.humidity, 100)}%` }}></div>
+                </div>
+             </div>
+
+             {/* 진동 카드 (애니메이션 적용) */}
+             <div className={`col-span-2 bg-white p-5 rounded-3xl shadow-sm flex items-center justify-between transition-colors duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-50 border border-red-100' : ''}`}>
+                <div className="flex items-center gap-4">
+                   <div className={`p-3 rounded-full transition-all duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-100 text-red-500 animate-bounce' : 'bg-gray-100 text-gray-500'}`}>
+                      <Activity size={24} />
+                   </div>
+                   <div>
+                      <p className="text-sm text-gray-400 font-bold">진동 감지</p>
+                      <p className={`text-lg font-bold transition-colors ${processedData.vibration === '감지됨' ? 'text-red-500' : 'text-gray-800'}`}>
+                         {processedData.vibration === '감지됨' ? '충격 발생! 💥' : '안정적인 주행 중'}
+                      </p>
+                   </div>
+                </div>
+                {processedData.vibration === '감지됨' ? (
+                   <div className="bg-red-100 p-2 rounded-full animate-pulse">
+                      <AlertTriangle className="text-red-500" size={24} />
+                   </div>
+                ) : (
+                   <CheckCircle className="text-green-500" size={24} />
+                )}
+             </div>
           </div>
 
-          {/* 3. 기타 위젯 영역 (그래프 등) */}
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-800 mb-2">최근 기록</h2>
-            <div className="h-32 flex items-center justify-center bg-gray-50 rounded-xl text-gray-400 text-sm">
-              그래프 데이터 준비 중...
-            </div>
-          </div>
-
-          {/* 스크롤 테스트를 위한 여백 (필요 없으면 삭제 가능) */}
           <div className="h-10"></div>
         </div>
       </main>
