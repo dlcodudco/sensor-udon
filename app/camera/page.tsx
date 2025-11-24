@@ -9,59 +9,105 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Video, Camera } from 'lucide-react'; // 아이콘 추가
 
+// 기록 페이지와 데이터 형식을 맞추기 위한 인터페이스 정의
+interface HistoryEvent {
+  id: number;
+  timestamp: string;
+  eventType: '충격' | '기울기' | '수동캡처' | '배송시작' | '배송완료';
+  eventValue: number;
+  message: string;
+  isAlert: boolean;
+  imageUrl?: string;
+}
+
 export default function CameraScreen() {
+  // 1. 초기값을 localStorage에서 가져와서 설정 (새로고침해도 유지됨)
   const [isStreaming, setIsStreaming] = useState(false);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+
+  // 컴포넌트 마운트 시 저장된 스트리밍 상태 확인
+  useEffect(() => {
+    const savedStreamState = localStorage.getItem('isStreaming');
+    if (savedStreamState === 'true') {
+      setIsStreaming(true);
+    }
+  }, []);
   
-  // 1. 스트리밍 시작/종료 핸들러
+  // 2. 스트리밍 토글 함수 (상태 저장 기능 추가)
   const handleToggleStream = () => {
-    setIsStreaming(!isStreaming);
-    if (isStreaming) {
-      setSnapshotUrl(null);
+    const newState = !isStreaming;
+    setIsStreaming(newState);
+    
+    // 상태를 localStorage에 저장 (다른 페이지 갔다 와도 기억함)
+    localStorage.setItem('isStreaming', newState.toString());
+
+    if (newState) {
+      setSnapshotUrl(null); // 스트리밍 켜면 기존 캡처 미리보기는 닫기
     }
   };
 
-  // 2. 스냅샷(캡처) 핸들러
+  // 3. 스냅샷 캡처 및 "기록 페이지로 전송" 함수
   const handleCaptureSnapshot = () => {
-    // 임시 더미 이미지 (실제 구현 시 API 연결 필요)
-    const tempUrl = `https://placehold.co/600x400/3c3c3c/d9d9d9?text=Captured+Snapshot\n@${new Date().toLocaleTimeString()}`;
-    setSnapshotUrl(tempUrl);
+    const timestamp = new Date().toISOString();
+    // 임시 이미지 URL 생성
+    const tempUrl = `https://placehold.co/600x400/3b82f6/ffffff?text=Manual+Capture\n@${new Date().toLocaleTimeString()}`;
+    
+    setSnapshotUrl(tempUrl); // 현재 화면에 미리보기 표시
+
+    // --- ⭐ 여기부터 기록 저장 로직 ---
+    const newEvent: HistoryEvent = {
+      id: Date.now(),
+      timestamp: timestamp,
+      eventType: '수동캡처',
+      eventValue: 0, // 수동 캡처는 수치가 없으므로 0
+      message: '사용자가 카메라 화면에서 직접 캡처했습니다.',
+      isAlert: false,
+      imageUrl: tempUrl,
+    };
+
+    // 기존 기록 불러오기
+    const storedHistory = localStorage.getItem('appHistory');
+    const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
+
+    // 새 기록 추가 및 저장
+    const updatedHistory = [newEvent, ...historyArray];
+    localStorage.setItem('appHistory', JSON.stringify(updatedHistory));
+
+    console.log("📸 수동 캡처 기록 저장 완료:", newEvent);
   };
 
   return (
-    // 🔴 1. 최상위 컨테이너: fixed inset-0으로 화면 고정 (스크롤 튕김 방지)
+    // 전체 컨테이너: 화면 꽉 채움 + 스크롤 방지
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
-      {/* 🔴 2. 헤더: 노치 영역만큼 패딩 추가 + 높이 유동적 설정 */}
+      {/* [상단 헤더] 고정 영역 */}
       <header className="
         flex-none bg-white z-30 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        
-        /* 👇 핵심: 노치 높이(env) + 16px 여유 공간 확보 */
         pt-[calc(env(safe-area-inset-top)+16px)] 
         pb-4
       ">
         <h1 className="text-xl font-bold text-gray-900">🎥 실시간 모니터링</h1>
         <div className="flex gap-4 text-gray-500">
-           {/* 헤더 우측 아이콘 (장식용) */}
+           {/* 헤더 우측 아이콘 (스트리밍 중일 때만 깜빡임) */}
           <Video size={20} className={isStreaming ? "text-red-500 animate-pulse" : ""} />
         </div>
       </header>
 
-      {/* 🔴 3. 본문: 여기만 스크롤 가능 */}
+      {/* [본문 콘텐츠] 스크롤 가능한 영역 */}
       <main className="
         flex-1 overflow-y-auto 
-        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] /* 하단바 가림 방지 여유 공간 넉넉히 */
+        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] 
         overscroll-y-contain
-        -webkit-overflow-scrolling-touch /* 아이폰 스크롤 부드럽게 */
+        -webkit-overflow-scrolling-touch
       ">
         <div className="space-y-6">
           
-          {/* 1. 영상 스트리밍 영역 (가로세로 비율 유지) */}
+          {/* 1. 영상 스트리밍 영역 */}
           <div className="bg-gray-900 aspect-video w-full rounded-2xl shadow-lg overflow-hidden relative border border-gray-800">
             {!isStreaming && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white p-4 text-center">
@@ -128,8 +174,8 @@ export default function CameraScreen() {
             {snapshotUrl && (
               <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 animate-fade-in-up">
                 <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm font-semibold text-gray-800">최근 캡처</span>
-                    <span className="text-xs text-gray-400">{new Date().toLocaleTimeString()}</span>
+                    <span className="text-sm font-semibold text-gray-800">방금 캡처된 이미지</span>
+                    <span className="text-xs text-gray-400">기록 페이지에 저장됨</span>
                 </div>
                 <div className="rounded-xl overflow-hidden border border-gray-100">
                     <img 
