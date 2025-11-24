@@ -100,6 +100,7 @@ export default function SensorScreen() {
 
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity, Wifi } from 'lucide-react'; 
 import DeviceStatus from '../../components/sensor/devicestatus';
 import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
@@ -116,14 +117,10 @@ interface DisplaySensorData {
 export default function SensorScreen() {
   const [liveData, setLiveData] = useState<LiveSensorDataResponse | null>(null);
   
-  // ⭐ 핵심 1: '첫 로딩'과 '배경 로딩' 구분
+  
   const [isFirstLoad, setIsFirstLoad] = useState(true); 
   const [error, setError] = useState<string | null>(null);
-  
-  // 데이터 수신 중임을 알리는 상태 (헤더 깜빡임용)
   const [isUpdating, setIsUpdating] = useState(false);
-
-  // ⭐ 자동 캡처 중복 방지용 Ref (이미 예약 걸려있는지 체크)
   const isCaptureScheduled = useRef(false);
 
   const loadData = async (isBackground = false) => {
@@ -320,32 +317,30 @@ export default function SensorScreen() {
                 </div>
              </div>
 
-             <div className="h-40 bg-gray-50 rounded-2xl flex items-center justify-center relative overflow-hidden border border-gray-100">
-                {/* 배경 가이드라인 */}
-                <div className="absolute w-full h-[1px] bg-gray-300/50"></div>
-                <div className="absolute h-full w-[1px] bg-gray-300/50"></div>
+             <div className="h-40 relative rounded-2xl flex items-center justify-center overflow-hidden border border-gray-100">
+                {/* ✅ 배경 이미지 적용 (public/images/bg.png 가정) */}
+                <Image 
+                  src="/images/bg.png"  // 👈 실제 배경 파일명으로 변경!
+                  alt="배경" 
+                  fill 
+                  className="object-cover opacity-80" // 약간 투명하게 해서 주인공 강조
+                  priority // 중요한 이미지라 먼저 로딩
+                />
                 
-                {/* 📦 움직이는 박스 */}
+                {/* 📦 움직이는 박스 이미지 */}
                 <div 
-                  className={`
-                    w-28 h-28 bg-blue-500 rounded-2xl shadow-xl 
-                    flex items-center justify-center text-white text-4xl 
-                    border-4 border-white/40 backdrop-blur-sm
-                    z-10
-                    /* ⭐ 핵심: 부드러운 움직임을 위한 transition 설정 */
-                    transition-transform duration-700 ease-out
-                  `}
-                  // 회전값이 바로바로 반영됨
+                  className="relative z-10 w-32 h-32 transition-transform duration-700 ease-out drop-shadow-2xl"
                   style={{ transform: `rotate(${processedData.tiltX}deg)` }} 
                 >
-                  <span className="drop-shadow-md">🍱</span>
+                  <Image 
+                    src="/images/box.png"
+                    alt="배달통" 
+                    fill // 부모 div(w-32 h-32) 크기에 꽉 차게 자동 조절
+                    // 👇 object-contain 중복 제거하고 mix-blend-multiply 적용
+                    className="object-contain mix-blend-multiply" 
+                    priority
+                  />
                 </div>
-
-                {/* 그림자 효과 (박스 기울기에 따라 움직임) */}
-                <div 
-                    className="absolute bottom-6 w-20 h-2 bg-black/10 rounded-full blur-sm transition-transform duration-700 ease-out"
-                    style={{ transform: `translateX(${processedData.tiltX}px) scale(${1 - Math.abs(processedData.tiltX)/100})` }}
-                />
              </div>
              <p className="text-xs text-gray-400 mt-3 text-center">오토바이의 기울기가 실시간으로 반영됩니다.</p>
           </div>

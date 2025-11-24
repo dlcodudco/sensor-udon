@@ -19,23 +19,38 @@ export default function SplashScreen() {
   }, [setHideNav]);
 
   return (
-    // 3. 화면 전체를 덮는 스타일 (네비게이션 바보다 위에 뜨도록 z-index 높임)
-    <div className="fixed inset-0 z-[100] w-full h-[100dvh] bg-white flex flex-col items-center justify-center overscroll-none touch-none">
+    // 🟡 변경됨: 배경을 어두운 색(bg-slate-900)에서 밝은 색(bg-slate-50)으로 변경
+    <div className="fixed inset-0 z-[100] w-full h-[100dvh] bg-slate-50 flex flex-col items-center justify-center overscroll-none touch-none">
       
-      {/* 로고 애니메이션 */}
-      <div className="flex flex-col items-center animate-pulse">
-        <span className="text-6xl mb-4">🛵</span>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-widest">
+      <div className="flex flex-col items-center">
+        {/* 로고 아이콘 */}
+        <div className="relative mb-8">
+            {/* 🟡 변경됨: 뒤에 빛나는 효과를 은은하게 조정 (opacity 조절) */}
+            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 rounded-full animate-pulse"></div>
+            <span className="relative text-6xl drop-shadow-sm">🛵</span>
+        </div>
+        
+        {/* 🟡 변경됨: 브랜드 이름 글씨색 (White -> Dark Slate) */}
+        <h1 className="text-3xl font-black tracking-wider mb-6 text-slate-900">
           SAFE FOOD
         </h1>
-        <p className="text-gray-400 text-xs mt-2 font-medium tracking-wider">
-          APP PREPARING...
-        </p>
+        
+        {/* ✨ 임팩트 있는 한 줄 */}
+        <div className="flex flex-col items-center space-y-1">
+            {/* 🟡 변경됨: 설명 글씨색 (Gray -> Slate-500 & 900) */}
+            <p className="text-xl font-light text-slate-500">
+              흔들림 없는 <strong className="text-slate-900 font-bold">맛</strong>
+            </p>
+            <p className="text-xl font-light text-slate-500">
+              완벽한 <strong className="text-blue-600 font-bold">온도</strong>
+            </p>
+        </div>
       </div>
 
-      {/* 하단 로딩 인디케이터 (스피너) */}
-      <div className="absolute bottom-20">
-        <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
+      {/* 하단 로딩 바 */}
+      {/* 🟡 변경됨: 로딩 바 배경색 (Dark -> Light Gray) */}
+      <div className="absolute bottom-20 w-32 h-1 bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-full bg-blue-600 animate-loading-bar w-full origin-left"></div>
       </div>
 
     </div>
