@@ -34,7 +34,7 @@ export async function fetchLiveSensorData(): Promise<LiveSensorData> {
 // utils/api.ts
 
 // 🚨 렌더에 배포된 실제 백엔드 기본 주소입니다.
-const API_BASE_URL = 'https://sensorudon-backend.onrender.com'; 
+/*const API_BASE_URL = 'https://sensorudon-backend.onrender.com'; 
 const SENSOR_ENDPOINT = '/sensor'; // 백엔드 main.py에서 확인된 경로
 
 // 백엔드 응답 구조에 맞춘 인터페이스 정의
@@ -48,7 +48,7 @@ export interface LiveSensorDataResponse {
 /**
  * 실시간 센서 데이터를 백엔드 API에서 가져옵니다.
  */
-export async function fetchLiveSensorData(): Promise<LiveSensorDataResponse> {
+/*export async function fetchLiveSensorData(): Promise<LiveSensorDataResponse> {
   const url = `${API_BASE_URL}${SENSOR_ENDPOINT}`;
   
   // CORS 문제가 이미 백엔드에서 해결되었으므로 바로 fetch를 사용합니다.
@@ -64,4 +64,31 @@ export async function fetchLiveSensorData(): Promise<LiveSensorDataResponse> {
 
   // 응답 데이터를 인터페이스에 맞춰 반환
   return response.json() as Promise<LiveSensorDataResponse>;
+}*/
+
+import axios from 'axios';
+
+// 백엔드 주소 (로컬 테스트 시 localhost, 실제 배포 시 해당 IP)
+const API_BASE_URL = 'http://localhost:8000';
+
+export interface LiveSensorDataResponse {
+  temperature: number | null;
+  humidity: number | null;
+  tilt: number | null;
 }
+
+export const fetchLiveSensorData = async (): Promise<LiveSensorDataResponse> => {
+  try {
+    // 백엔드의 @app.get("/sensor") 엔드포인트 호출
+    const response = await axios.get(`${API_BASE_URL}/sensor`);
+    return response.data;
+  } catch (error) {
+    console.error("API Fetch Error:", error);
+    // 에러 발생 시 기본값 반환 (앱이 멈추지 않도록)
+    return {
+      temperature: null,
+      humidity: null,
+      tilt: null
+    };
+  }
+};
