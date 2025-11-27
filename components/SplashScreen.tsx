@@ -19,24 +19,39 @@ export default function SplashScreen() {
   }, [setHideNav]);
 
   return (
-    // 3. 화면 전체를 덮는 스타일 (네비게이션 바보다 위에 뜨도록 z-index 높임)
-    <div className="fixed inset-0 z-[100] w-full h-[100dvh] bg-white flex flex-col items-center justify-center overscroll-none touch-none">
+    <div className="fixed inset-0 z-[100] w-full h-[100dvh] bg-slate-50 flex flex-col items-center justify-center overscroll-none touch-none">
       
-      {/* 로고 애니메이션 */}
-      <div className="flex flex-col items-center animate-pulse">
-        <span className="text-6xl mb-4">🛵</span>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-widest">
+      {/* 🌟 전체 컨텐츠가 부드럽게 나타나도록 fade-in 적용 (선택사항, Tailwind 설정에 따라 다름) */}
+      <div className="flex flex-col items-center animate-fade-in">
+        
+        {/* 로고 아이콘 영역 */}
+        <div className="relative mb-8">
+            {/* 배경의 은은한 파란색 빛 (Pulse 애니메이션 유지) */}
+            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-25 rounded-full animate-pulse"></div>
+            
+            {/* 🛵 🌟 핵심 변경: 스쿠터 아이콘에 통통 튀는 bounce 애니메이션 추가 */}
+            <div className="relative animate-bounce">
+              <span className="text-7xl drop-shadow-md">🛵</span>
+            </div>
+        </div>
+        
+        {/* 브랜드 이름 */}
+        <h1 className="text-3xl font-black tracking-wider mb-6 text-slate-900">
           SAFE FOOD
         </h1>
-        <p className="text-gray-400 text-xs mt-2 font-medium tracking-wider">
-          APP PREPARING...
-        </p>
+        
+        {/* 임팩트 있는 한 줄 */}
+        <div className="flex flex-col items-center space-y-2">
+            <p className="text-xl font-light text-slate-600">
+              흔들림 없는 <strong className="text-slate-900 font-bold">맛</strong>
+            </p>
+            <p className="text-xl font-light text-slate-600">
+              완벽한 <strong className="text-blue-600 font-bold">온도</strong>
+            </p>
+        </div>
       </div>
 
-      {/* 하단 로딩 인디케이터 (스피너) */}
-      <div className="absolute bottom-20">
-        <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
-      </div>
+      {/* 🔥 하단 로딩 바 제거됨 */}
 
     </div>
   );
