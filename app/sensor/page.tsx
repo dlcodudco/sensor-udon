@@ -99,11 +99,13 @@ export default function SensorScreen() {
 }*/
 
 
+// pages/sensor/SensorScreen.tsx
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity, Wifi } from 'lucide-react'; 
+import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity } from 'lucide-react'; 
 import DeviceStatus from '../../components/sensor/devicestatus';
 import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
+// 🟢 1. 알림 훅 추가
 import { useSafetyAlert } from '../../hooks/useSafetyAlert';
 
 interface DisplaySensorData {
@@ -117,114 +119,85 @@ interface DisplaySensorData {
 
 export default function SensorScreen() {
   const [liveData, setLiveData] = useState<LiveSensorDataResponse | null>(null);
-  
-  
   const [isFirstLoad, setIsFirstLoad] = useState(true); 
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const isCaptureScheduled = useRef(false);
 
-  // 🟢 2. 여기에 알림 감시자를 연결합니다! (데이터가 없으면 0으로 처리해서 에러 방지)
-  // 이 한 줄이 있으면, 위험할 때 핸드폰이 진동하고 경고창이 뜹니다.
-  useSafetyAlert({
-    tiltX: liveData?.tilt ?? 0,
-    temperature: liveData?.temperature ?? 0,
-    humidity: liveData?.humidity ?? 0
+  // 🧪 테스트용 스위치 (누르면 강제로 위험 상황 연출)
+  const [isTestMode, setIsTestMode] = useState(false);
+
+  // 현재 데이터 계산 (테스트 모드면 강제값, 아니면 실제값)
+  const currentTilt = isTestMode ? 25 : (liveData?.tilt ?? 0);
+  const currentTemp = liveData?.temperature ?? 0;
+  const currentHumid = liveData?.humidity ?? 0;
+
+  // 🟢 2. 알림 감시자 연결 (음성 안내 + 화면 반짝임 상태 감지)
+  const { isDanger } = useSafetyAlert({
+    tiltX: currentTilt,
+    temperature: currentTemp,
+    humidity: currentHumid
   });
 
   const loadData = async (isBackground = false) => {
     try {
       if (!isBackground) setIsFirstLoad(true);
-      
-      // 데이터 요청 시작 시 잠깐 '수신 중' 표시
       setIsUpdating(true);
-      
       const data = await fetchLiveSensorData();
       setLiveData(data);
       setError(null);
     } catch (err) {
       console.error("센서 데이터 로딩 실패:", err);
-      // 백그라운드 업데이트 중 에러는 사용자에게 큰 방해 안 되게 처리
       if (!isBackground) setError("데이터를 불러오는 데 실패했습니다.");
     } finally {
       setIsFirstLoad(false);
-      
-      // 0.3초 뒤에 수신 표시 끔 (깜빡임 효과)
       setTimeout(() => setIsUpdating(false), 300);
     }
   };
 
   useEffect(() => {
-    // 1. 최초 실행 (로딩 화면 보임)
     loadData(false); 
-
-    // ⭐ 핵심 2: 1초(1000ms)마다 데이터 갱신 (실시간성 확보)
-    // 기울기와 진동을 위해 주기를 짧게 잡음. 온도/습도도 같이 갱신되지만 문제없음.
-    const intervalId = setInterval(() => {
-      loadData(true); // true = 백그라운드 로딩 (화면 안 가림)
-    }, 1000); 
-
+    const intervalId = setInterval(() => loadData(true), 1000); 
     return () => clearInterval(intervalId);
   }, []);
 
-  // -----------------------------------------------------------
-  // ⭐ 핵심: 기울기 감시 및 1.5초 후 자동 캡처 로직
-  // -----------------------------------------------------------
+  // --- 자동 캡처 로직 (기존 유지) ---
   useEffect(() => {
-    if (!liveData) return;
+    if (!liveData && !isTestMode) return;
+    
+    // 테스트 모드일 때도 캡처 로직이 돌도록 currentTilt 사용
+    const checkTilt = Math.abs(currentTilt);
 
-    const currentTilt = Math.abs(liveData.tilt ?? 0);
+    if (checkTilt > 10 && !isCaptureScheduled.current) {
+      console.log(`⚠️ 위험 기울기 감지(${checkTilt}도)! 1.5초 후 자동 캡처 예약됨...`);
+      isCaptureScheduled.current = true;
 
-    // 1. 기울기가 10도를 넘었고 + 현재 캡처 예약이 안 걸려있다면
-    if (currentTilt > 10 && !isCaptureScheduled.current) {
-      
-      console.log(`⚠️ 위험 기울기 감지(${currentTilt}도)! 1.5초 후 자동 캡처 예약됨...`);
-      isCaptureScheduled.current = true; // 예약 걸림 표시 (중복 방지)
-
-      // 2. 1.5초 타이머 시작
       setTimeout(() => {
-        handleAutoCapture(currentTilt); // 1.5초 후 캡처 실행
-        
-        // (선택사항) 캡처 후 5초 동안은 다시 캡처 안 되게 쿨타임 주기
-        setTimeout(() => {
-            isCaptureScheduled.current = false; 
-        }, 5000);
-
-      }, 1500); // 1500ms = 1.5초
+        handleAutoCapture(checkTilt);
+        setTimeout(() => { isCaptureScheduled.current = false; }, 5000);
+      }, 1500);
     }
-  }, [liveData]); // liveData가 바뀔 때마다 실행됨
+  }, [currentTilt]); // liveData 대신 currentTilt 감시
 
-  // ⭐ 자동 캡처 실행 함수 (실제로는 백엔드에 저장 요청)
   const handleAutoCapture = (triggeredTilt: number) => {
     const timestamp = new Date().toISOString();
-    
-    // 1. 새로운 이벤트 데이터 생성
     const newEvent = {
-      id: Date.now(), // 현재 시간을 ID로 사용 (고유값)
+      id: Date.now(),
       timestamp: timestamp,
-      eventType: '기울기', // 타입 지정
+      eventType: '기울기',
       eventValue: triggeredTilt,
       message: `위험 기울기 ${triggeredTilt}° 감지 후 자동 캡처됨.`,
       isAlert: true,
-      // 실제 카메라 연동 전이라 더미 이미지 사용 (나중에 실제 스냅샷 URL로 교체)
       imageUrl: `https://placehold.co/600x400/f97316/ffffff?text=Auto+Capture+${triggeredTilt}deg`,
     };
-
-    // 2. 기존 기록 가져오기 (없으면 빈 배열)
     const storedHistory = localStorage.getItem('appHistory');
     const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
-
-    // 3. 새 기록을 맨 앞에 추가
     const updatedHistory = [newEvent, ...historyArray];
-
-    // 4. 저장소에 다시 저장
     localStorage.setItem('appHistory', JSON.stringify(updatedHistory));
-
-    // 알림 (테스트용)
     console.log("📸 자동 캡처 저장 완료:", newEvent);
   };
 
-  // --- 헬퍼 함수 ---
+  // --- 헬퍼 함수 (기존 유지) ---
   const getTiltStatus = (deg: number) => {
     const absDeg = Math.abs(deg);
     if (absDeg > 15) return { color: 'text-red-600', bg: 'bg-red-50', text: '쏟아짐 주의! 🚨', border: 'border-red-500' };
@@ -238,9 +211,6 @@ export default function SensorScreen() {
     return { text: '건조해요 (바삭) ☀️', color: 'bg-orange-400' };
   };
 
-  // -----------------------------------------------------------
-  // 에러 화면 (최초 로딩 실패 시에만)
-  // -----------------------------------------------------------
   if (error && isFirstLoad) {
     return (
       <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 text-center z-50">
@@ -250,9 +220,6 @@ export default function SensorScreen() {
     );
   }
   
-  // -----------------------------------------------------------
-  // 최초 로딩 화면 (이후 업데이트 때는 안 뜸!)
-  // -----------------------------------------------------------
   if (isFirstLoad || liveData === null) {
     return (
       <div className="fixed inset-0 flex flex-col justify-center items-center bg-gray-50 z-50">
@@ -262,12 +229,13 @@ export default function SensorScreen() {
     );
   }
 
+  // 데이터 처리 (테스트 모드 값 반영)
   const processedData: DisplaySensorData = {
-    tiltX: liveData?.tilt !== null ? parseFloat(liveData.tilt.toFixed(1)) : 0.0,
+    tiltX: parseFloat(currentTilt.toFixed(1)),
     tiltY: 0.0,
-    temperature: liveData?.temperature !== null ? parseFloat(liveData.temperature.toFixed(1)) : 0.0,
-    humidity: liveData?.humidity !== null ? parseFloat(liveData.humidity.toFixed(1)) : 0.0,
-    vibration: '정상', // 테스트 시 '감지됨'으로 변경해서 확인 가능
+    temperature: parseFloat(currentTemp.toFixed(1)),
+    humidity: parseFloat(currentHumid.toFixed(1)),
+    vibration: '정상', 
     battery: 85,
   };
 
@@ -277,33 +245,43 @@ export default function SensorScreen() {
   return (
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
+      {isDanger && (
+        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden">
+            {/* 1. 배경: 전체적으로 붉은 기운이 돌면서 깜빡임 (테두리 X) */}
+            <div className="absolute inset-0 bg-red-600/20 animate-pulse"></div>
+            
+            {/* 2. 그라데이션: 화면 위아래 가장자리를 좀 더 붉게 */}
+            <div className="absolute inset-0 bg-gradient-to-b from-red-600/30 via-transparent to-red-600/30"></div>
+
+            {/* 3. 중앙 경고창: 깔끔한 흰색 박스 + 그림자 */}
+            <div className="relative bg-white/95 backdrop-blur-sm px-8 py-6 rounded-3xl shadow-2xl animate-bounce text-center border border-red-100 mx-4">
+              <div className="text-4xl mb-2">🚨</div>
+              <h1 className="text-2xl font-black text-red-600 leading-tight">위험 감지</h1>
+              <p className="text-sm text-gray-500 font-bold mt-1">기울기를 확인하세요!</p>
+            </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <header className="flex-none bg-white z-30 flex items-center justify-between px-6 border-b border-gray-100 shadow-sm pt-[calc(env(safe-area-inset-top)+16px)] pb-4">
         <div className="flex items-center gap-2">
            <h1 className="text-xl font-bold text-gray-900">📦 실시간 모니터링</h1>
-           
-           {/* 🔴 LIVE 배지: 빨간 점에만 애니메이션(ping) 다시 적용 */}
            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 border border-red-100 rounded-md ml-1">
-              {/* 👇 여기가 애니메이션 핵심 부분 */}
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-              </span>
-              <span className="text-[10px] font-extrabold text-red-600 tracking-wider">LIVE</span>
+             <span className="relative flex h-1.5 w-1.5">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+             </span>
+             <span className="text-[10px] font-extrabold text-red-600 tracking-wider">LIVE</span>
            </div>
         </div>
 
         <div className="flex gap-4 text-gray-500">
-          {/* 🔄 새로고침 버튼: 여전히 정지 상태 (누를 때만 살짝 반응) */}
+           {/* 🧪 테스트 버튼 (소리/화면 확인용) */}
           <button 
-            onClick={() => loadData(true)} 
-            className="hover:text-blue-600 transition p-1 active:rotate-180 duration-300"
+            onClick={() => setIsTestMode(!isTestMode)}
+            className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${isTestMode ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}`}
           >
-            <RotateCw size={20} />
-          </button>
-          
-          <button className="hover:text-blue-600 transition p-1">
-            <Bell size={20} />
+            {isTestMode ? '테스트 중' : '위험 테스트'}
           </button>
         </div>
       </header>
@@ -314,7 +292,7 @@ export default function SensorScreen() {
           
           <DeviceStatus battery={processedData.battery} connectionStatus="연결됨" />
 
-          {/* 🌟 1. 기울기 시각화 (실시간 반영) */}
+          {/* 🌟 1. 기울기 시각화 */}
           <div className={`relative bg-white p-6 rounded-3xl shadow-sm border-2 ${Math.abs(processedData.tiltX) > 15 ? 'border-red-100' : 'border-transparent'} overflow-hidden`}>
              <div className="flex justify-between items-start mb-6">
                 <div>
@@ -327,16 +305,16 @@ export default function SensorScreen() {
              </div>
 
              <div className="h-40 relative rounded-2xl flex items-center justify-center overflow-hidden border border-gray-100">
-                {/* ✅ 배경 이미지 적용 (public/images/bg.png 가정) */}
+                {/* sizes 에러 해결 */}
                 <Image 
-                  src="/images/bg.png"  // 👈 실제 배경 파일명으로 변경!
+                  src="/images/bg.png" 
                   alt="배경" 
                   fill 
-                  className="object-cover opacity-80" // 약간 투명하게 해서 주인공 강조
-                  priority // 중요한 이미지라 먼저 로딩
+                  sizes="100vw"
+                  className="object-cover opacity-80" 
+                  priority 
                 />
                 
-                {/* 📦 움직이는 박스 이미지 */}
                 <div 
                   className="relative z-10 w-32 h-32 transition-transform duration-700 ease-out drop-shadow-2xl"
                   style={{ transform: `rotate(${processedData.tiltX}deg)` }} 
@@ -344,8 +322,8 @@ export default function SensorScreen() {
                   <Image 
                     src="/images/box.png"
                     alt="배달통" 
-                    fill // 부모 div(w-32 h-32) 크기에 꽉 차게 자동 조절
-                    // 👇 object-contain 중복 제거하고 mix-blend-multiply 적용
+                    fill 
+                    sizes="(max-width: 768px) 100vw, 33vw"
                     className="object-contain mix-blend-multiply" 
                     priority
                   />
@@ -356,7 +334,7 @@ export default function SensorScreen() {
 
           {/* 🌟 2. 온도 & 습도 & 진동 */}
           <div className="grid grid-cols-2 gap-4">
-             
+              
              {/* 온도 */}
              <div className="bg-white p-5 rounded-3xl shadow-sm flex flex-col justify-between h-40">
                 <div className="flex justify-between items-start">
@@ -365,6 +343,7 @@ export default function SensorScreen() {
                 </div>
                 <div>
                    <p className="text-3xl font-bold text-gray-800">{processedData.temperature}<span className="text-lg text-gray-400 font-normal">°C</span></p>
+                   {/* ✅ 기존 멘트 복구 완료 */}
                    <p className="text-xs text-gray-500 mt-1">
                       {processedData.temperature > 50 ? '너무 뜨거워요! 🔥' : '따뜻하게 유지 중 ♨️'}
                    </p>
@@ -382,6 +361,7 @@ export default function SensorScreen() {
                 </div>
                 <div>
                    <p className="text-3xl font-bold text-gray-800">{processedData.humidity}<span className="text-lg text-gray-400 font-normal">%</span></p>
+                   {/* ✅ 기존 멘트 복구 완료 */}
                    <p className="text-xs text-gray-500 mt-1">{humidInfo.text}</p>
                 </div>
                 <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
@@ -389,7 +369,7 @@ export default function SensorScreen() {
                 </div>
              </div>
 
-             {/* 진동 카드 (애니메이션 적용) */}
+             {/* ✅ 진동 카드 (완벽 복구) */}
              <div className={`col-span-2 bg-white p-5 rounded-3xl shadow-sm flex items-center justify-between transition-colors duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-50 border border-red-100' : ''}`}>
                 <div className="flex items-center gap-4">
                    <div className={`p-3 rounded-full transition-all duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-100 text-red-500 animate-bounce' : 'bg-gray-100 text-gray-500'}`}>
