@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { Video, Camera } from 'lucide-react';
 
 // 백엔드 스트리밍 주소 (팀원에게 받은 주소)
-const STREAM_URL = "https://sensorudon-backend.onrender.com/camera";
+const STREAM_URL = "https://sensorudon-backend.onrender.com/camera/live";
 
 interface HistoryEvent {
   id: number;
