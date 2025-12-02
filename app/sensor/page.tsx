@@ -104,6 +104,7 @@ import Image from 'next/image';
 import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity, Wifi } from 'lucide-react'; 
 import DeviceStatus from '../../components/sensor/devicestatus';
 import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
+import { useSafetyAlert } from '../../hooks/useSafetyAlert';
 
 interface DisplaySensorData {
   tiltX: number;
@@ -122,6 +123,14 @@ export default function SensorScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const isCaptureScheduled = useRef(false);
+
+  // 🟢 2. 여기에 알림 감시자를 연결합니다! (데이터가 없으면 0으로 처리해서 에러 방지)
+  // 이 한 줄이 있으면, 위험할 때 핸드폰이 진동하고 경고창이 뜹니다.
+  useSafetyAlert({
+    tiltX: liveData?.tilt ?? 0,
+    temperature: liveData?.temperature ?? 0,
+    humidity: liveData?.humidity ?? 0
+  });
 
   const loadData = async (isBackground = false) => {
     try {
