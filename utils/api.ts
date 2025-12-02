@@ -69,7 +69,7 @@ export interface LiveSensorDataResponse {
 import axios from 'axios';
 
 // 백엔드 주소 (로컬 테스트 시 localhost, 실제 배포 시 해당 IP)
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://sensorudon-backend.onrender.com';
 
 export interface LiveSensorDataResponse {
   temperature: number | null;
