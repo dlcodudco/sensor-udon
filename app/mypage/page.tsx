@@ -10,11 +10,10 @@
 'use client';
 
 import React from 'react';
-import { usePushNotification } from '../../hooks/usePushNotification';
 import { 
   Settings, Smartphone, LogOut, ChevronRight, 
   Bell, Shield, Lock 
-} from 'lucide-react'; // 아이콘 추가
+} from 'lucide-react'; 
 
 // 사용자 정보 (Mock Data)
 const USER_INFO = {
@@ -31,7 +30,7 @@ interface SettingItemProps {
   title: string;
   value?: string;
   onClick?: () => void;
-  isDestructive?: boolean; // 로그아웃 등 위험한 작업용 색상
+  isDestructive?: boolean;
   showArrow?: boolean;
 }
 
@@ -48,7 +47,6 @@ const SettingItem: React.FC<SettingItemProps> = ({
     `}
   >
     <div className="flex items-center gap-3">
-      {/* 아이콘 영역 */}
       {icon && (
         <div className={`p-2 rounded-full ${isDestructive ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-600'}`}>
           {icon}
@@ -67,13 +65,13 @@ const SettingItem: React.FC<SettingItemProps> = ({
 );
 
 export default function MyPageScreen() {
-  const { requestPermission, permission, fcmToken } = usePushNotification();
+  // ❌ 삭제됨: const { requestPermission, permission, fcmToken } = usePushNotification();
+  // 이유: 로컬 알림 방식으로 변경하면서 더 이상 필요 없음
 
   const handleLogout = () => {
     if (window.confirm("정말 로그아웃 하시겠습니까?")) {
       console.log("로그아웃 처리됨");
       
-      // ⭐ 중요: 로그인 정보를 삭제해야 다음 접속 시 로그인 화면이 뜹니다.
       localStorage.removeItem("isLoggedIn"); 
       
       window.location.href = '/login';
@@ -81,16 +79,13 @@ export default function MyPageScreen() {
   };
 
   return (
-    // 🔴 1. 최상위 컨테이너: fixed inset-0으로 화면 고정 (스크롤 튕김 방지)
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
-      {/* 🔴 2. 헤더: 노치 영역만큼 패딩 추가 + 높이 유동적 설정 */}
+      {/* 헤더 */}
       <header className="
         flex-none bg-white z-30 
         flex items-center justify-between px-6
         border-b border-gray-100 shadow-sm
-        
-        /* 👇 핵심: 노치 높이(env) + 16px 여유 공간 확보 */
         pt-[calc(env(safe-area-inset-top)+16px)] 
         pb-4
       ">
@@ -102,12 +97,12 @@ export default function MyPageScreen() {
         </div>
       </header>
 
-      {/* 🔴 3. 본문: 여기만 스크롤 가능 */}
+      {/* 본문 */}
       <main className="
         flex-1 overflow-y-auto 
-        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] /* 하단바 가림 방지 여유 공간 넉넉히 */
+        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] 
         overscroll-y-contain
-        -webkit-overflow-scrolling-touch /* 아이폰 스크롤 부드럽게 */
+        -webkit-overflow-scrolling-touch
       ">
         <div className="space-y-6">
           
@@ -148,12 +143,12 @@ export default function MyPageScreen() {
               App Settings
             </h3>
             
-            {/* 알림 설정 */}
+            {/* 알림 설정: 이제 로컬 알림이 기본이므로 항상 ON으로 표시 */}
             <SettingItem 
               icon={<Bell size={18} />} 
-              title="푸시 알림" 
-              value={permission === 'granted' ? "ON" : "OFF"} 
-              onClick={requestPermission}
+              title="위험 알림(진동)" 
+              value="ON" 
+              onClick={() => alert("현재 진동 알림이 활성화되어 있습니다.")}
               showArrow
             />
             
@@ -173,15 +168,7 @@ export default function MyPageScreen() {
             />
           </div>
 
-          {/* FCM 토큰 표시 (개발용) */}
-          {fcmToken && (
-            <div className="bg-gray-100 p-3 rounded-xl border border-gray-200">
-               <p className="text-xs text-gray-500 font-mono break-all">
-                 <span className="font-bold select-none">Token: </span>
-                 {fcmToken}
-               </p>
-            </div>
-          )}
+          {/* (FCM 토큰 표시 섹션은 삭제했습니다) */}
 
           {/* 4. 로그아웃 버튼 */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-4">
@@ -197,7 +184,6 @@ export default function MyPageScreen() {
             © 2025 Safe Food Project. All rights reserved.
           </p>
 
-          {/* 하단 여백 */}
           <div className="h-4"></div>
 
         </div>
