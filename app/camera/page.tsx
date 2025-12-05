@@ -1,19 +1,13 @@
-/*export default function CameraPage() {
-  return (
-    <div>
-      <h1>카메라 화면</h1>
-      <img src="" alt="camera stream" />
-    </div>
-  );
-}*/
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Video, Camera } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RefreshCw, ExternalLink, Video, Camera } from 'lucide-react';
 
-// 백엔드 스트리밍 주소 (팀원에게 받은 주소)
-const STREAM_URL = "https://sensorudon-backend.onrender.com/camera/live";
+// PC에서 볼(원하면) 백엔드 라이브 페이지
+const LIVE_PAGE = 'https://sensorudon-backend.onrender.com/camera/live';
+
+// 폰에서 확실히 뜨는 최신 프레임(정답)
+const LATEST_JPG = 'https://sensorudon-backend.onrender.com/camera/latest.jpg';
 
 interface HistoryEvent {
   id: number;
@@ -25,44 +19,81 @@ interface HistoryEvent {
   imageUrl?: string;
 }
 
-export default function CameraScreen() {
+export default function CameraPage() {
+  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const [nonce, setNonce] = useState(0);
+  const [playing, setPlaying] = useState(true);
+
+  // 스트리밍 on/off (버튼 유지)
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // 캡쳐 미리보기
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
-  // 스트리밍 갱신용 키 (껐다 켤 때 영상 새로고침 위함)
-  const [streamKey, setStreamKey] = useState(Date.now());
 
   useEffect(() => {
-    const savedStreamState = localStorage.getItem('isStreaming');
-    if (savedStreamState === 'true') {
-      setIsStreaming(true);
-    }
-  }, []);
-  
-  const handleToggleStream = () => {
-    const newState = !isStreaming;
-    setIsStreaming(newState);
-    
-    // 스트리밍을 켤 때마다 키를 갱신해서 이미지를 새로 불러옴
-    if (newState) {
-      setStreamKey(Date.now());
-      setSnapshotUrl(null);
-    }
+    setMounted(true);
+    const saved = localStorage.getItem('isStreaming');
+    const on = saved === 'true';
+    setIsStreaming(on);
 
-    localStorage.setItem('isStreaming', newState.toString());
+    setNonce(Date.now());
+
+    const decide = () => setIsMobile(window.innerWidth <= 768);
+    decide();
+    window.addEventListener('resize', decide);
+    return () => window.removeEventListener('resize', decide);
+  }, []);
+
+  // 모바일: latest.jpg 를 300ms 갱신(스트리밍 켜져있고 playing일 때만)
+  useEffect(() => {
+    if (!mounted) return;
+    if (!isMobile) return;
+    if (!isStreaming) return;
+    if (!playing) return;
+
+    const id = setInterval(() => setNonce(Date.now()), 300);
+    return () => clearInterval(id);
+  }, [mounted, isMobile, isStreaming, playing]);
+
+  const iframeSrc = useMemo(() => {
+    if (!mounted) return LIVE_PAGE;
+    const sep = LIVE_PAGE.includes('?') ? '&' : '?';
+    return `${LIVE_PAGE}${sep}t=${nonce}`;
+  }, [mounted, nonce]);
+
+  const imgSrc = useMemo(() => {
+    if (!mounted) return LATEST_JPG;
+    const sep = LATEST_JPG.includes('?') ? '&' : '?';
+    return `${LATEST_JPG}${sep}t=${nonce}`;
+  }, [mounted, nonce]);
+
+  const reconnect = () => setNonce(Date.now());
+  const openNewTab = () => window.open(LIVE_PAGE, '_blank', 'noopener,noreferrer');
+
+  const toggleStream = () => {
+    const next = !isStreaming;
+    setIsStreaming(next);
+    localStorage.setItem('isStreaming', next.toString());
+    setSnapshotUrl(null);
+
+    if (next) setNonce(Date.now()); // 켤 때 즉시 새로고침
   };
 
+  // ✅ 캡쳐: “live 페이지”가 아니라 “latest.jpg”를 저장해야 안정적임
   const handleCaptureSnapshot = () => {
+    if (!isStreaming) return;
+
     const timestamp = new Date().toISOString();
-    
-    // 캡처 시 현재 스트리밍 화면을 이미지로 저장 (URL 뒤에 시간 붙여서 고정)
-    // 주의: 실제 이미지 데이터가 아닌 URL을 저장하는 방식입니다.
-    const currentCaptureUrl = `${STREAM_URL}?t=${Date.now()}`;
-    
-    setSnapshotUrl(currentCaptureUrl); 
+
+    // 캡쳐 순간의 최신 프레임을 고정 URL로 저장
+    const currentCaptureUrl = `${LATEST_JPG}${LATEST_JPG.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    setSnapshotUrl(currentCaptureUrl);
 
     const newEvent: HistoryEvent = {
       id: Date.now(),
-      timestamp: timestamp,
+      timestamp,
       eventType: '수동캡처',
       eventValue: 0,
       message: '사용자가 카메라 화면에서 직접 캡처했습니다.',
@@ -72,129 +103,123 @@ export default function CameraScreen() {
 
     const storedHistory = localStorage.getItem('appHistory');
     const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
-    const updatedHistory = [newEvent, ...historyArray];
-    localStorage.setItem('appHistory', JSON.stringify(updatedHistory));
-
-    console.log("📸 수동 캡처 기록 저장 완료:", newEvent);
+    localStorage.setItem('appHistory', JSON.stringify([newEvent, ...historyArray]));
   };
 
   return (
-    <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
-      
-      {/* [상단 헤더] */}
-      <header className="
-        flex-none bg-white z-30 
-        flex items-center justify-between px-6
-        border-b border-gray-100 shadow-sm
-        pt-[calc(env(safe-area-inset-top)+16px)] 
-        pb-4
-      ">
-        <h1 className="text-xl font-bold text-gray-900">🎥 실시간 모니터링</h1>
-        <div className="flex gap-4 text-gray-500">
-          <Video size={20} className={isStreaming ? "text-red-500 animate-pulse" : ""} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* 헤더 */}
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm pt-[calc(env(safe-area-inset-top)+12px)] pb-3">
+        <div className="px-5 flex items-center justify-between">
+          <h1 className="text-[22px] font-extrabold text-gray-900 flex items-center gap-2">
+            🎥 실시간 모니터링
+          </h1>
+
+          <div className="flex items-center gap-2">
+            <Video size={22} className={isStreaming ? 'text-red-500 animate-pulse' : 'text-gray-400'} />
+
+            <button
+              onClick={reconnect}
+              className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm flex items-center gap-2"
+              type="button"
+            >
+              <RefreshCw size={16} />
+              재연결
+            </button>
+
+            <button
+              onClick={openNewTab}
+              className="px-3 py-2 rounded-xl bg-black text-white hover:bg-gray-800 text-sm flex items-center gap-2"
+              type="button"
+            >
+              <ExternalLink size={16} />
+              새 탭
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* [본문 콘텐츠] */}
-      <main className="
-        flex-1 overflow-y-auto 
-        p-6 pb-[calc(100px+env(safe-area-inset-bottom))] 
-        overscroll-y-contain
-        -webkit-overflow-scrolling-touch
-      ">
-        <div className="space-y-6">
-          
-          {/* 1. 영상 스트리밍 영역 */}
-          <div className="bg-gray-900 aspect-video w-full rounded-2xl shadow-lg overflow-hidden relative border border-gray-800">
-            {/* 스트리밍 꺼짐 상태 */}
-            {!isStreaming && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white p-4 text-center">
-                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-3">
-                    <Video className="w-8 h-8 text-gray-500" />
-                </div>
-                <p className="text-lg font-medium">스트리밍 대기 중</p>
-                <p className="text-sm text-gray-400 mt-1">아래 시작 버튼을 눌러주세요</p>
+      <main className="px-5 pb-[calc(88px+env(safe-area-inset-bottom))] pt-5">
+        <div className="space-y-5">
+          {/* ✅ 카메라 카드 (모바일 비율 맞춤) */}
+          <div className="bg-black w-full rounded-3xl overflow-hidden border border-gray-200 shadow-lg">
+            <div className="relative w-full aspect-[16/9] flex items-center justify-center">
+              <div className="absolute top-3 left-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-2 z-10 shadow-sm">
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                LIVE
               </div>
-            )}
-            
-            {/* 스트리밍 켜짐 상태 (실제 영상) */}
-            {isStreaming && (
-                <div className="w-full h-full flex items-center justify-center bg-black relative">
-                    {/* 라이브 배지 */}
-                    <div className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1 z-10 shadow-sm">
-                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                        LIVE
-                    </div>
 
-                    {/* ⭐ 실제 CCTV 영상 (img 태그 사용) */}
-                    <img 
-                      src={`${STREAM_URL}?t=${streamKey}`}
-                      alt="실시간 CCTV" 
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        // 이미지 로드 실패 시 대체 텍스트 표시
-                        e.currentTarget.style.display = 'none';
-                        alert("카메라 연결에 실패했습니다. 백엔드 서버를 확인해주세요.");
-                      }}
-                    />
-                </div>
-            )}
+              {!isStreaming ? (
+                <div className="text-gray-300 text-sm">스트리밍 대기 중</div>
+              ) : isMobile ? (
+                <img
+                  src={imgSrc}
+                  alt="실시간 프레임"
+                  className="w-full h-full object-contain"
+                  onError={() => setTimeout(() => setNonce(Date.now()), 500)}
+                />
+              ) : (
+                <iframe
+                  key={mounted ? nonce : 0}
+                  src={iframeSrc}
+                  className="w-full h-full"
+                  allow="autoplay; fullscreen"
+                  suppressHydrationWarning
+                />
+              )}
+            </div>
           </div>
 
-          {/* 2. 스트림 제어 버튼 */}
+          {/* ✅ 스트리밍 시작/종료 버튼 */}
           <button
-            onClick={handleToggleStream}
-            className={`w-full py-4 font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${
-              isStreaming 
-                ? 'bg-white text-red-600 border-2 border-red-100 hover:bg-red-50' 
+            onClick={toggleStream}
+            className={`w-full py-4 rounded-3xl font-extrabold text-lg shadow-lg active:scale-[0.99] transition ${
+              isStreaming
+                ? 'bg-white text-red-600 border-2 border-red-100 hover:bg-red-50'
                 : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700'
             }`}
           >
-            {isStreaming ? (
-                <>🛑 스트리밍 종료</>
-            ) : (
-                <>▶️ 스트리밍 시작</>
-            )}
+            {isStreaming ? '🛑 스트리밍 종료' : '▶️ 스트리밍 시작'}
           </button>
 
-          {/* 3. 스냅샷(캡처) 버튼 */}
-          <div className="pt-2 border-t border-gray-200 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Camera size={20} />
-                스냅샷
-            </h2>
-            
+          {/* ✅ 스냅샷 영역 (멘트 제거, 버튼 유지) */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 text-[24px] font-extrabold text-gray-900">
+              <Camera size={24} />
+              스냅샷
+            </div>
+
             <button
               onClick={handleCaptureSnapshot}
-              disabled={!isStreaming} 
-              className={`w-full py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                isStreaming
-                  ? 'bg-gray-900 text-white hover:bg-gray-800 active:scale-95 shadow-md'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              disabled={!isStreaming}
+              className={`mt-4 w-full py-4 rounded-3xl font-extrabold text-lg shadow-md active:scale-[0.99] transition ${
+                isStreaming ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
-              📸 화면 캡처
+              📸 화면 캡쳐
             </button>
 
-            {/* 캡처 미리보기 */}
+            {isMobile && isStreaming && (
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={() => setPlaying((v) => !v)}
+                  className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm"
+                  type="button"
+                >
+                  {playing ? '⏸️ 일시정지' : '▶️ 재생'}
+                </button>
+              </div>
+            )}
+
+            {/* 캡쳐 미리보기 */}
             {snapshotUrl && (
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 animate-fade-in-up">
-                <div className="flex justify-between items-center mb-3">
-                    <span className="text-sm font-semibold text-gray-800">방금 캡처된 이미지</span>
-                    <span className="text-xs text-gray-400">기록 페이지에 저장됨</span>
-                </div>
-                <div className="rounded-xl overflow-hidden border border-gray-100">
-                    <img 
-                      src={snapshotUrl} 
-                      alt="캡처된 이미지" 
-                      className="w-full h-auto object-cover"
-                    />
+              <div className="mt-4 bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+                <div className="rounded-2xl overflow-hidden border border-gray-100">
+                  <img src={snapshotUrl} alt="캡처된 이미지" className="w-full h-auto object-cover" />
                 </div>
               </div>
             )}
           </div>
-          
-          <div className="h-4"></div>
         </div>
       </main>
     </div>
