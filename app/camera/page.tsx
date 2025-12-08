@@ -31,6 +31,8 @@ export default function CameraPage() {
   const [nonce, setNonce] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // 캡쳐 미리보기
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
