@@ -99,13 +99,11 @@ export default function SensorScreen() {
 }*/
 
 
-// pages/sensor/SensorScreen.tsx
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { RotateCw, Bell, AlertTriangle, CheckCircle, Package, Thermometer, Droplets, Activity } from 'lucide-react'; 
 import DeviceStatus from '../../components/sensor/devicestatus';
 import { fetchLiveSensorData, LiveSensorDataResponse } from '../../utils/api';
-// 🟢 1. 알림 훅 추가
 import { useSafetyAlert } from '../../hooks/useSafetyAlert';
 
 interface DisplaySensorData {
@@ -117,6 +115,9 @@ interface DisplaySensorData {
   battery: number;
 }
 
+// 📷 [수정 1] 카메라 이미지 주소 상수 추가 (카메라 페이지와 동일)
+const LATEST_JPG = 'https://sensorudon-backend.onrender.com/camera/latest.jpg';
+
 export default function SensorScreen() {
   const [liveData, setLiveData] = useState<LiveSensorDataResponse | null>(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true); 
@@ -124,15 +125,13 @@ export default function SensorScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const isCaptureScheduled = useRef(false);
 
-  // 🧪 테스트용 스위치 (누르면 강제로 위험 상황 연출)
+  // 🧪 테스트용 스위치
   const [isTestMode, setIsTestMode] = useState(false);
 
-  // 현재 데이터 계산 (테스트 모드면 강제값, 아니면 실제값)
   const currentTilt = isTestMode ? 25 : (liveData?.tilt ?? 0);
   const currentTemp = liveData?.temperature ?? 0;
   const currentHumid = liveData?.humidity ?? 0;
 
-  // 🟢 2. 알림 감시자 연결 (음성 안내 + 화면 반짝임 상태 감지)
   const { isDanger } = useSafetyAlert({
     tiltX: currentTilt,
     temperature: currentTemp,
@@ -161,26 +160,52 @@ export default function SensorScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- 자동 캡처 로직 (기존 유지) ---
+  // --- 자동 캡처 로직 ---
   useEffect(() => {
     if (!liveData && !isTestMode) return;
     
-    // 테스트 모드일 때도 캡처 로직이 돌도록 currentTilt 사용
     const checkTilt = Math.abs(currentTilt);
 
+    // 기울기 15도 초과 시 캡처 (기존 코드의 10을 15로 수정하거나 원하시는대로 두셔도 됩니다. 현재는 10으로 되어있어 유지함)
     if (checkTilt > 10 && !isCaptureScheduled.current) {
       console.log(`⚠️ 위험 기울기 감지(${checkTilt}도)! 1.5초 후 자동 캡처 예약됨...`);
       isCaptureScheduled.current = true;
 
       setTimeout(() => {
         handleAutoCapture(checkTilt);
+        // 5초 쿨타임
         setTimeout(() => { isCaptureScheduled.current = false; }, 5000);
       }, 1500);
     }
-  }, [currentTilt]); // liveData 대신 currentTilt 감시
+  }, [currentTilt]);
 
-  const handleAutoCapture = (triggeredTilt: number) => {
+  // 📷 [수정 2] 실제 카메라 이미지를 가져오도록 함수 변경 (async 적용)
+  const handleAutoCapture = async (triggeredTilt: number) => {
     const timestamp = new Date().toISOString();
+    
+    // 기본값은 박스 이미지 (캡처 실패 시 대비)
+    let imageBase64 = '/images/box.png';
+
+    try {
+      // 실제 카메라 주소로 요청 (캐시 방지를 위해 시간 파라미터 추가)
+      const response = await fetch(`${LATEST_JPG}?t=${Date.now()}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        // Blob을 Base64 문자열로 변환
+        imageBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        console.log("📸 실제 카메라 이미지 캡처 성공");
+      } else {
+        console.warn("카메라 응답 없음, 기본 이미지 사용");
+      }
+    } catch (e) {
+      console.error("자동 캡처 중 이미지 가져오기 실패:", e);
+    }
+
     const newEvent = {
       id: Date.now(),
       timestamp: timestamp,
@@ -188,16 +213,18 @@ export default function SensorScreen() {
       eventValue: triggeredTilt,
       message: `위험 기울기 ${triggeredTilt}° 감지 후 자동 캡처됨.`,
       isAlert: true,
-      imageUrl: `https://sensorudon-backend.onrender.com/camera/latest.jpg`,
+      imageUrl: imageBase64, // [수정 3] 실제 캡처된 이미지(Base64) 저장
     };
+
     const storedHistory = localStorage.getItem('appHistory');
     const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
     const updatedHistory = [newEvent, ...historyArray];
-    localStorage.setItem('appHistory', JSON.stringify(updatedHistory));
+    
+    // 로컬 스토리지 용량 관리를 위해 최대 20~30개 정도만 유지하는 것이 좋습니다 (선택사항)
+    localStorage.setItem('appHistory', JSON.stringify(updatedHistory.slice(0, 30)));
     console.log("📸 자동 캡처 저장 완료:", newEvent);
   };
 
-  // --- 헬퍼 함수 (기존 유지) ---
   const getTiltStatus = (deg: number) => {
     const absDeg = Math.abs(deg);
     if (absDeg > 15) return { color: 'text-red-600', bg: 'bg-red-50', text: '쏟아짐 주의! 🚨', border: 'border-red-500' };
@@ -229,7 +256,6 @@ export default function SensorScreen() {
     );
   }
 
-  // 데이터 처리 (테스트 모드 값 반영)
   const processedData: DisplaySensorData = {
     tiltX: parseFloat(currentTilt.toFixed(1)),
     tiltY: 0.0,
@@ -246,21 +272,16 @@ export default function SensorScreen() {
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
       {isDanger && (
-  <div className="absolute inset-0 z-50 pointer-events-none flex items-end justify-center overflow-hidden pb-24"> {/* ✅ items-center -> items-end 로 변경, pb-24 추가 */}
-      {/* 1. 배경: 전체적으로 붉은 기운이 돌면서 깜빡임 (테두리 X) */}
-      <div className="absolute inset-0 bg-red-600/20 animate-pulse"></div>
-      
-      {/* 2. 그라데이션: 화면 위아래 가장자리를 좀 더 붉게 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-red-600/30 via-transparent to-red-600/30"></div>
-
-      {/* 3. 중앙 경고창: 깔끔한 흰색 박스 + 그림자 */}
-      <div className="relative bg-white/95 backdrop-blur-sm px-8 py-6 rounded-3xl shadow-2xl animate-bounce text-center border border-red-100 mx-4">
-        <div className="text-4xl mb-2">🚨</div>
-        <h1 className="text-2xl font-black text-red-600 leading-tight">위험 감지</h1>
-        <p className="text-sm text-gray-500 font-bold mt-1">기울기를 확인하세요!</p>
-      </div>
-  </div>
-)}
+        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-red-600/20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-red-600/30 via-transparent to-red-600/30"></div>
+            <div className="relative bg-white/95 backdrop-blur-sm px-8 py-6 rounded-3xl shadow-2xl animate-bounce text-center border border-red-100 mx-4">
+              <div className="text-4xl mb-2">🚨</div>
+              <h1 className="text-2xl font-black text-red-600 leading-tight">위험 감지</h1>
+              <p className="text-sm text-gray-500 font-bold mt-1">기울기를 확인하세요!</p>
+            </div>
+        </div>
+      )}
 
       {/* 헤더 */}
       <header className="flex-none bg-white z-30 flex items-center justify-between px-6 border-b border-gray-100 shadow-sm pt-[calc(env(safe-area-inset-top)+16px)] pb-4">
@@ -276,7 +297,6 @@ export default function SensorScreen() {
         </div>
 
         <div className="flex gap-4 text-gray-500">
-           {/* 🧪 테스트 버튼 (소리/화면 확인용) */}
           <button 
             onClick={() => setIsTestMode(!isTestMode)}
             className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${isTestMode ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600'}`}
@@ -305,7 +325,6 @@ export default function SensorScreen() {
              </div>
 
              <div className="h-40 relative rounded-2xl flex items-center justify-center overflow-hidden border border-gray-100">
-                {/* sizes 에러 해결 */}
                 <Image 
                   src="/images/bg.png" 
                   alt="배경" 
@@ -343,7 +362,6 @@ export default function SensorScreen() {
                 </div>
                 <div>
                    <p className="text-3xl font-bold text-gray-800">{processedData.temperature}<span className="text-lg text-gray-400 font-normal">°C</span></p>
-                   {/* ✅ 기존 멘트 복구 완료 */}
                    <p className="text-xs text-gray-500 mt-1">
                       {processedData.temperature > 50 ? '너무 뜨거워요! 🔥' : '따뜻하게 유지 중 ♨️'}
                    </p>
@@ -361,7 +379,6 @@ export default function SensorScreen() {
                 </div>
                 <div>
                    <p className="text-3xl font-bold text-gray-800">{processedData.humidity}<span className="text-lg text-gray-400 font-normal">%</span></p>
-                   {/* ✅ 기존 멘트 복구 완료 */}
                    <p className="text-xs text-gray-500 mt-1">{humidInfo.text}</p>
                 </div>
                 <div className="w-full h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
@@ -369,7 +386,7 @@ export default function SensorScreen() {
                 </div>
              </div>
 
-             {/* ✅ 진동 카드 (완벽 복구) */}
+             {/* 진동 카드 */}
              <div className={`col-span-2 bg-white p-5 rounded-3xl shadow-sm flex items-center justify-between transition-colors duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-50 border border-red-100' : ''}`}>
                 <div className="flex items-center gap-4">
                    <div className={`p-3 rounded-full transition-all duration-300 ${processedData.vibration === '감지됨' ? 'bg-red-100 text-red-500 animate-bounce' : 'bg-gray-100 text-gray-500'}`}>
