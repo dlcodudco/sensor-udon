@@ -188,7 +188,7 @@ export default function SensorScreen() {
       eventValue: triggeredTilt,
       message: `위험 기울기 ${triggeredTilt}° 감지 후 자동 캡처됨.`,
       isAlert: true,
-      imageUrl: `https://placehold.co/600x400/f97316/ffffff?text=Auto+Capture+${triggeredTilt}deg`,
+      imageUrl: `https://sensorudon-backend.onrender.com/camera/latest.jpg`,
     };
     const storedHistory = localStorage.getItem('appHistory');
     const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
