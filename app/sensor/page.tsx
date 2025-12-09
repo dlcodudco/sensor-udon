@@ -246,21 +246,21 @@ export default function SensorScreen() {
     <div className="fixed inset-0 z-0 w-full h-[100dvh] bg-gray-50 flex flex-col overflow-hidden overscroll-none">
       
       {isDanger && (
-        <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center overflow-hidden">
-            {/* 1. 배경: 전체적으로 붉은 기운이 돌면서 깜빡임 (테두리 X) */}
-            <div className="absolute inset-0 bg-red-600/20 animate-pulse"></div>
-            
-            {/* 2. 그라데이션: 화면 위아래 가장자리를 좀 더 붉게 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-red-600/30 via-transparent to-red-600/30"></div>
+  <div className="absolute inset-0 z-50 pointer-events-none flex items-end justify-center overflow-hidden pb-24"> {/* ✅ items-center -> items-end 로 변경, pb-24 추가 */}
+      {/* 1. 배경: 전체적으로 붉은 기운이 돌면서 깜빡임 (테두리 X) */}
+      <div className="absolute inset-0 bg-red-600/20 animate-pulse"></div>
+      
+      {/* 2. 그라데이션: 화면 위아래 가장자리를 좀 더 붉게 */}
+      <div className="absolute inset-0 bg-gradient-to-b from-red-600/30 via-transparent to-red-600/30"></div>
 
-            {/* 3. 중앙 경고창: 깔끔한 흰색 박스 + 그림자 */}
-            <div className="relative bg-white/95 backdrop-blur-sm px-8 py-6 rounded-3xl shadow-2xl animate-bounce text-center border border-red-100 mx-4">
-              <div className="text-4xl mb-2">🚨</div>
-              <h1 className="text-2xl font-black text-red-600 leading-tight">위험 감지</h1>
-              <p className="text-sm text-gray-500 font-bold mt-1">기울기를 확인하세요!</p>
-            </div>
-        </div>
-      )}
+      {/* 3. 중앙 경고창: 깔끔한 흰색 박스 + 그림자 */}
+      <div className="relative bg-white/95 backdrop-blur-sm px-8 py-6 rounded-3xl shadow-2xl animate-bounce text-center border border-red-100 mx-4">
+        <div className="text-4xl mb-2">🚨</div>
+        <h1 className="text-2xl font-black text-red-600 leading-tight">위험 감지</h1>
+        <p className="text-sm text-gray-500 font-bold mt-1">기울기를 확인하세요!</p>
+      </div>
+  </div>
+)}
 
       {/* 헤더 */}
       <header className="flex-none bg-white z-30 flex items-center justify-between px-6 border-b border-gray-100 shadow-sm pt-[calc(env(safe-area-inset-top)+16px)] pb-4">
