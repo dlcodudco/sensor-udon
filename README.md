@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛠️ Sensor-Udon Frontend Repository
 
-## Getting Started
+---
+## 🚀목차
+- [진행 현황](#진행-현황-progress)
+- [개발 사이클](#-개발-사이클-development-workflow)
+- [Git 커밋 메시지 컨벤션](#-git-커밋-메시지-컨벤션)
+---
+## 📆진행 현황 (Progress)
+| 기능                  | 상태 | 설명                                      |
+|---------------------|------|-----------------------------------------|
+ | 프로젝트 세팅|✅ 완료|  |
+| Vercel 자동 배포 | ✅ 완료 | GitHub Actions + Vercel 환경          |
+ | 폴더 구조 세팅 | ✅ 완료 |                    |
+ | 기능 구현 | ✅ : 완료 |                    |
 
-First, run the development server:
+> 🟡 : 개발 중 / ⏳ : 예정 / ✅ : 완료
+---
+
+## 🔄 개발 사이클 (Development Workflow)
+
+이 프로젝트는 **GitHub Flow**를 기반으로 하며, 다음과 같은 절차로 개발을 진행합니다
+
+### 📌 브랜치 전략
+
+| 브랜치명              | 용도 |
+|-------------------|------|
+| `main`            | 운영 배포용 (배포되는 안정 버전) |
+| `dev`             | 개발용 통합 브랜치 |
+| `feat/(기능명)` | 기능 개발 브랜치 (`feat/login` 등) |
+
+
+---
+
+### 👨‍💻 기능 개발 절차
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. dev에서 기능 브랜치 생성
+git switch dev
+git pull origin dev
+git switch -c feat/login  # 기능명 기준
+
+# 2. 코드 작성 & 커밋
+git add .
+git commit -m "feat: 로그인 컴포넌트 구현" # 기능명 기준
+
+# 3. 원격 브랜치 푸시
+git push origin feat/login
+
+# 4. GitHub에서 PR 생성 → 대상 브랜치: dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **PR 제목 예시:**  
+> `feat: 로그인 컴포넌트 구현`  
+> `fix: 회원가입 이메일 유효성 검사 멘트 수정`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+### 🧼 브랜치 정리
 
-To learn more about Next.js, take a look at the following resources:
+- PR 병합 완료 후, `feat/*` 브랜치는 **삭제**
+- `dev` 브랜치에 병합
+- `main` 브랜치는 항상 **배포 가능한 상태 유지**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🔐 Git 커밋 메시지 컨벤션
 
-## Deploy on Vercel
+| 태그 | 설명 |
+|------|------|
+| `add` | 새로운 파일 추가 |
+| `feat` | 새로운 기능 추가 |
+| `fix` | 버그 수정 |
+| `docs` | 문서 수정 |
+| `refactor` | 리팩토링 |
+| `test` | 테스트 추가 |
+| `chore` | 빌드, 설정 관련 작업 |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+> 예시:  
+> feat: 회원가입 기능 구현`  
+> fix: 로그인시 에러메시지 수정`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
